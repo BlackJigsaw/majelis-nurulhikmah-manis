@@ -521,31 +521,32 @@ th{background:#f7f7f7;font-size:12px}
 </div></div>
 
 <script>
-  // TEMPELAN CLOUD AUTO - JANGAN DIHAPUS
-const KV_URL = "https://touching-monster-151282.upstash.io";
-const KV_TOKEN = "gQAAAAAAAk7yAAIgcDE1ZWIyYTE4ZTQ2YWM0ZTkyODY1MDU2ZTBjMzljN2RjOA";
-const _setAsli = localStorage.setItem.bind(localStorage);
-localStorage.setItem = function(kunci, nilai){
-  _setAsli(kunci, nilai);
-  if(kunci==='user_nurulhikmah'||kunci==='role_nurulhikmah') return;
-  fetch(KV_URL + "/set/" + kunci, { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: nilai }).catch(()=>{});
-};
-async function ambilDariCloud(){
-  try{
-    let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }});
-    let j = await r.json();
-    let daftar = j.result || [];
-    for(let k of daftar){
-      let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }});
-      let j2 = await r2.json();
-      if(j2.result && k!=='user_nurulhikmah' && k!=='role_nurulhikmah'){ _setAsli(k, j2.result); }
-   }
-  let _hashBaru = daftar.map(k=>localStorage.getItem(k)).join('|') + '|' + daftar.join(',');
-  if(daftar.length>0 && sessionStorage.getItem('hashCloud')!==_hashBaru){ sessionStorage.setItem('hashCloud',_hashBaru); location.reload(); }
-  }catch(e){}
-}
-ambilDariCloud();
-// AKHIR TEMPELAN CLOUD AUTO
+// TEMPELAN CLOUD AUTO - JANGAN DIHAPUS
+  const KV_URL = "https://touching-monster-151282.upstash.io";
+  const KV_TOKEN = "gQAAAAAAAk7yAAIgcDE1ZWIyYTE4ZTQ2YWM0ZTkyODY1MDU2ZTBjMzljN2RjOA";
+  const _setAsli = localStorage.setItem.bind(localStorage);
+  async function kirimKeCloud(kunci, nilai){
+    if(kunci==='user_nurulhikmah'||kunci==='role_nurulhikmah') return;
+    try{ await fetch(KV_URL + "/set/" + kunci, { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: nilai }); }catch(e){}
+  }
+  localStorage.setItem = function(kunci, nilai){
+    _setAsli(kunci, nilai);
+    kirimKeCloud(kunci, nilai);
+  };
+  async function ambilDariCloud(){
+    try{
+      let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }});
+      let j = await r.json();
+      let daftar = j.result || [];
+      for(let k of daftar){
+        let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }});
+        let j2 = await r2.json();
+        if(j2.result && k!=='user_nurulhikmah' && k!=='role_nurulhikmah'){ _setAsli(k, j2.result); }
+      }
+      return true;
+    }catch(e){ return false; }
+  }
+  // AKHIR TEMPELAN CLOUD AUTO
 const dataAwal = [
 ["Abil","26110001"],["Akang","26110002"],["Albi","26110003"],["Atika","26110004"],["Aurel","26110005"],["Ayra","26110006"],["Azkia","26110007"],["Daffi","26110008"],["Darel","26110009"],["Ega","26110010"],["Eja","26110011"],["Elang","26110012"],["Fikri","26110013"],["Firza","26110014"],["Habibah","26110015"],["Hafiz","26110016"],["Hana","26110017"],["Hani","26110018"],["Hayya","26110019"],["Iki","26110020"],["Iski","26110021"],["Kamila","26110022"],["Khansa","26110023"],["Koko","26110024"],["Lintang","26110025"],["Nabila","26110026"],["Nadia","26110027"],["Nayya","26110028"],["Nayya","26110029"],["Opal","26110030"],["Pasha","26110031"],["Raffa","26110032"],["Rafka","26110033"],["Raisya","26110034"],["Ridwan (dodi)","26110035"],["Ridwan (wancoy)","26110036"],["Salsa","26110037"],["Satya","26110038"],["Yajna","26110039"],["Zehan","26110040"]
 ].map(x=>({nama:x[0], nis:x[1], absen:''}));
@@ -655,7 +656,7 @@ document.getElementById('popupEditStruktur').style.display = 'none';
 
 // ===== NAVIGASI HALAMAN BARU ADMIN (ABSEN, RIWAYAT, PENGUNJUNG) =====
 function bukaAbsenAdmin(){
-  if(!isAdmin()) return alert('Hanya Admin yang bisa membuka halaman absen.');
+  if(!bisaAbsen()) return alert('Hanya Admin & Guru yang bisa membuka halaman absen.');
   let thAksi = document.getElementById('thAksi'); if(thAksi) thAksi.style.display='none';
   tampilSantri();
   let box = document.getElementById('absenBox');
@@ -664,7 +665,7 @@ function bukaAbsenAdmin(){
 }
 
 function bukaEditDatabase(){
-  if(!isAdmin()) return alert('Hanya Admin yang bisa membuka Edit Database.');
+  if(!bisaEdit()) return alert('Hanya Admin & Pengurus yang bisa membuka Edit Database.');
   tampilEditDatabase();
   let page = document.getElementById('editDatabasePage');
   page.classList.add('show');
@@ -1467,7 +1468,11 @@ function simpanEditSantri(){
     else { waliList[idxWali] = {nis:nisBaru, namaSantri:namaBaru, namaWali:namaWali.trim(), nomor:nomorWali.trim(), alamat:alamatWali.trim()}; simpanWali(); }
   } else { upsertWali(nisBaru, namaBaru, namaWali, nomorWali, alamatWali); }
   santri[editIndex].nama = namaBaru; santri[editIndex].nis = nisBaru;
-  simpan(); tampilSantri(); if(isPengurus()) tampilPengurusPage(); if(document.getElementById('listEditDatabase')) tampilEditDatabase(); tutupPopupEdit(); alert('Disimpan: '+namaBaru);
+  simpan(); tampilSantri(); if(isPengurus()) tampilPengurusPage(); if(document.getElementById('listEditDatabase')) tampilEditDatabase(); tutupPopupEdit();
+  kirimKeCloud('santri_nurulhikmah', JSON.stringify(santri));
+  kirimKeCloud('wali_nurulhikmah', JSON.stringify(waliList));
+  kirimKeCloud('rekap_santri_nurulhikmah', JSON.stringify(rekapSantri));
+  alert('Disimpan & sudah tersimpan ke Cloud: '+namaBaru);
 }
 function hapusWaliDiEdit(){
   if(editIndex<0) return; let s = santri[editIndex]; let idxWali = waliList.findIndex(w=>w.nis===s.nis);
@@ -1598,7 +1603,7 @@ function updateRekapSantri(tglVal, santriSaatIni){
   });
   simpanRekapSantri();
 }
-function shareWA(){
+async function shareWA(){
   if(!bisaAbsen()) return alert('Role kamu tidak bisa absen / bagikan');
   let tglVal = document.getElementById('tglAbsen').value;
   let d = tglVal ? new Date(tglVal) : new Date();
@@ -1612,7 +1617,12 @@ function shareWA(){
   let idxSama = riwayat.findIndex(r=>r.tglVal===tglVal);
   let dataBaru = {tglVal, hari, tanggal, jam, total:santri.length, hadir:h, sakit:sk, izin:iz, tanpaKet:tk, data: JSON.parse(JSON.stringify(santri))};
   if(idxSama>=0) riwayat[idxSama]=dataBaru; else riwayat.unshift(dataBaru);
+  updateRekapSantri(tglVal, santri);
+  simpanRiwayat();
   localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri));
+  await kirimKeCloud('riwayat_nurulhikmah', JSON.stringify(riwayat));
+  await kirimKeCloud('rekap_santri_nurulhikmah', JSON.stringify(rekapSantri));
+  await kirimKeCloud('santri_nurulhikmah', JSON.stringify(santri));
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
 }
 </script>
