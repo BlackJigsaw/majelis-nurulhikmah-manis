@@ -152,6 +152,11 @@ th{background:#f7f7f7;font-size:12px}
 <p class="small" id="pengumumanInfo"></p>
 <button id="btnHapusPengumuman" class="danger hidden" onclick="hapusPengumuman()">Hapus Pengumuman (Admin)</button>
 </div>
+<div id="pesanKhususBanner" class="pengumuman-banner hidden" style="border-left:5px solid #b7791f;background:#fffaf0">
+<h3>✉️ Pesan Khusus</h3>
+<p class="pengumuman-teks" id="pesanKhususTeks"></p>
+<p class="small" id="pesanKhususInfo"></p>
+</div>
 
 <div id="tamuPage" class="hidden">
 <div class="card">
@@ -252,6 +257,24 @@ th{background:#f7f7f7;font-size:12px}
 <textarea id="teksPengumumanAdmin" placeholder="Tulis pengumuman... contoh: Pengajian rutin hari Jumat pukul 19.00..."></textarea>
 <button onclick="kirimPengumuman('teksPengumumanAdmin')">Kirim Pengumuman</button>
 <button class="danger" onclick="hapusPengumuman()">Hapus Pengumuman Saat Ini</button>
+</div>
+<div class="card hidden" id="cardRevisiAbsenAdmin">
+<h3 style="margin:0">🛠️ Revisi Absen Santri</h3>
+<p class="small">Pilih santri dan tanggal yang keliru, lalu tentukan status yang benar. Perubahan akan memperbarui rekap, riwayat, halaman Wali/Santri, dan cloud.</p>
+<button class="gold" onclick="bukaPopupRevisiAbsen()">Buka Revisi Absen</button>
+<div id="logRevisiAbsen" style="margin-top:12px"></div>
+</div>
+<div class="card hidden" id="cardPesanKhususAdmin">
+<h3 style="margin:0">✉️ Kirim Pesan Khusus</h3>
+<p class="small">Pesan akan muncul tepat di bawah pengumuman, hanya pada akun dengan role yang dipilih. Pesan tetap tampil sampai ditimpa pesan baru atau dihapus Admin.</p>
+<textarea id="teksPesanKhususAdmin" placeholder="Tulis pesan khusus untuk Santri dan/atau Guru..."></textarea>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 12px">
+<label style="display:flex;align-items:center;gap:7px"><input type="checkbox" id="targetPesanSantri" checked> User Santri</label>
+<label style="display:flex;align-items:center;gap:7px"><input type="checkbox" id="targetPesanGuru"> User Guru</label>
+</div>
+<button onclick="kirimPesanKhusus()">Kirim Pesan Khusus</button>
+<button class="danger" onclick="hapusPesanKhusus()">Hapus Pesan Khusus</button>
+<p class="small" id="infoPesanKhususAdmin"></p>
 </div>
 
 <div class="card hidden" id="cardPermintaanAkses">
@@ -472,6 +495,16 @@ th{background:#f7f7f7;font-size:12px}
 <button class="secondary" onclick="tutupEditStruktur()">Batal</button>
 </div></div>
 
+<div id="popupPilihAnakWali" class="modal" onclick="if(event.target===this) batalPilihAnakWali()">
+<div class="modal-box">
+<div style="display:flex;justify-content:space-between;align-items:start"><h3>👨‍👩‍👧 Pilih Santri</h3><button class="del" style="font-size:20px" onclick="batalPilihAnakWali()">✕</button></div>
+<p class="small" id="infoPilihAnakWali">Nama wali terdaftar pada beberapa santri. Pilih anak yang ingin ditampilkan.</p>
+<input id="cariPilihanAnakWali" placeholder="Cari nama / NIS santri..." oninput="tampilPilihanAnakWali()">
+<div id="daftarPilihanAnakWali" style="max-height:48vh;overflow:auto;margin:10px 0"></div>
+<button onclick="konfirmasiPilihAnakWali()">Pilih dan Masuk</button>
+<button class="secondary" onclick="batalPilihAnakWali()">Kembali</button>
+</div></div>
+
 <div id="popupDitolak" class="modal" onclick="if(event.target===this) tutupPopupDitolak()">
 <div class="modal-box" style="text-align:center">
 <div style="font-size:44px">⛔</div>
@@ -529,7 +562,8 @@ const _removeAsli = localStorage.removeItem.bind(localStorage);
 const CLOUD_DATA_KEYS = new Set([
   'santri_nurulhikmah','riwayat_nurulhikmah','rekap_santri_nurulhikmah','wali_nurulhikmah',
   'struktur_nurulhikmah','permintaan_akses_nurulhikmah','disetujui_nurulhikmah',
-  'permintaan_hapus_santri_nurulhikmah','pengumuman_nurulhikmah','pengunjung_nurulhikmah'
+  'permintaan_hapus_santri_nurulhikmah','pengumuman_nurulhikmah','pengunjung_nurulhikmah',
+  'pesan_khusus_nurulhikmah','revisi_absen_nurulhikmah','wali_pilihan_anak_nurulhikmah'
 ]);
 let cloudReady = false;
 let cloudApplying = false;
@@ -580,6 +614,9 @@ function muatStateDariLocal(){
   try{ const v=localStorage.getItem('permintaan_hapus_santri_nurulhikmah'); if(v) permintaanHapusSantri=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pengumuman_nurulhikmah'); if(v) pengumuman=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pengunjung_nurulhikmah'); if(v) pengunjung=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('pesan_khusus_nurulhikmah'); if(v) pesanKhusus=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('revisi_absen_nurulhikmah'); if(v) revisiAbsenLog=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('wali_pilihan_anak_nurulhikmah'); if(v) waliPilihanAnak=JSON.parse(v)||{}; }catch(e){}
 }
 function refreshTampilanSetelahCloud(){
   if(!cloudReady || !user || !role) return;
@@ -587,8 +624,9 @@ function refreshTampilanSetelahCloud(){
   if(isWali()) tampilWaliPage();
   else if(isSantri()) tampilSantriPage();
   else if(isPengurus()){ tampilPengurusPage(); tampilRiwayatPengurus(); }
-  else if(isAdmin() || isGuru()){ tampilSantri(); tampilRiwayat(); if(isAdmin()){tampilPermintaanAkses();tampilPermintaanHapus();tampilPengunjung(); if(document.getElementById('editDatabasePage').classList.contains('show')) tampilEditDatabase();} }
+  else if(isAdmin() || isGuru()){ tampilSantri(); tampilRiwayat(); if(isAdmin()){tampilPermintaanAkses();tampilPermintaanHapus();tampilPengunjung();tampilLogRevisiAbsen();tampilInfoPesanKhususAdmin(); if(document.getElementById('editDatabasePage').classList.contains('show')) tampilEditDatabase();} }
   tampilPengumuman();
+  tampilPesanKhusus();
 }
 async function ambilDariCloud(awal=false){
   try{
@@ -602,8 +640,8 @@ async function ambilDariCloud(awal=false){
     cloudApplying=false;
     cloudReady=true;
     if(!awal) refreshTampilanSetelahCloud();
-    else setTimeout(refreshTampilanSetelahCloud,0);
-  }catch(e){ cloudApplying=false; cloudReady=true; console.warn('Cloud belum dapat disinkronkan:',e); }
+    else setTimeout(()=>{pulihkanSesiLogin();refreshTampilanSetelahCloud();},0);
+  }catch(e){ cloudApplying=false; cloudReady=true; console.warn('Cloud belum dapat disinkronkan:',e); if(awal) setTimeout(pulihkanSesiLogin,0); }
 }
 function cloudFlush(){ return cloudQueue; }
 ambilDariCloud(true);
@@ -628,6 +666,10 @@ let riwayatTerbuka = -1; let editIndex = -1; let waliAnak = []; let santriAktif 
 let rekapSantri = JSON.parse(localStorage.getItem('rekap_santri_nurulhikmah')||'{}');
 function simpanRekapSantri(){ localStorage.setItem('rekap_santri_nurulhikmah', JSON.stringify(rekapSantri)); }
 let waliList = JSON.parse(localStorage.getItem('wali_nurulhikmah')||'[]');
+let waliPilihanAnak = JSON.parse(localStorage.getItem('wali_pilihan_anak_nurulhikmah')||'{}');
+let pendingWaliLogin = null;
+function kunciNamaWali(nama){ return String(nama||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function simpanWaliPilihanAnak(){ localStorage.setItem('wali_pilihan_anak_nurulhikmah',JSON.stringify(waliPilihanAnak)); }
 function simpanWali(){ localStorage.setItem('wali_nurulhikmah', JSON.stringify(waliList)); }
 function cariWaliByNIS(nis){ return waliList.find(w=>w.nis===nis); }
 function normalisasiNomor(n){ n=(n||'').trim().replace(/[\s\-]/g,''); if(n.startsWith('0')) n='62'+n.slice(1); if(n.startsWith('+')) n=n.slice(1); return n; }
@@ -964,6 +1006,9 @@ function tolakAkses(i){
 
 // ===== PENGUMUMAN =====
 let pengumuman = JSON.parse(localStorage.getItem('pengumuman_nurulhikmah')||'null');
+let pesanKhusus = JSON.parse(localStorage.getItem('pesan_khusus_nurulhikmah')||'null');
+let revisiAbsenLog = JSON.parse(localStorage.getItem('revisi_absen_nurulhikmah')||'[]');
+let santriDipilihUntukRevisi = null;
 function tampilPengumuman(){
   let banner = document.getElementById('pengumumanBanner');
   if(!pengumuman || !pengumuman.teks){ banner.classList.add('hidden'); return; }
@@ -971,6 +1016,7 @@ function tampilPengumuman(){
   document.getElementById('pengumumanTeks').innerText = pengumuman.teks;
   document.getElementById('pengumumanInfo').innerText = 'Oleh: '+namaTampil(pengumuman.pengirim)+' ('+pengumuman.role+') • '+pengumuman.waktu;
   document.getElementById('btnHapusPengumuman').classList.toggle('hidden', !isAdmin());
+  tampilPesanKhusus();
 }
 function kirimPengumuman(inputId){
   if(!(isAdmin()||isPengurus())) return alert('Hanya Admin & Pengurus yang bisa kirim pengumuman');
@@ -988,6 +1034,47 @@ function hapusPengumuman(){
   if(!confirm('Hapus pengumuman ini dari semua user?')) return;
   pengumuman=null; localStorage.removeItem('pengumuman_nurulhikmah');
   tampilPengumuman(); alert('Pengumuman dihapus.');
+}
+function tampilPesanKhusus(){
+  const banner=document.getElementById('pesanKhususBanner');
+  if(!banner) return;
+  const sasaran=pesanKhusus && Array.isArray(pesanKhusus.target)?pesanKhusus.target:[];
+  const bolehTampil=(isSantri()&&sasaran.includes('SANTRI'))||(isGuru()&&sasaran.includes('GURU'));
+  if(!pesanKhusus || !pesanKhusus.teks || !bolehTampil){banner.classList.add('hidden');return;}
+  banner.classList.remove('hidden');
+  document.getElementById('pesanKhususTeks').innerText=pesanKhusus.teks;
+  document.getElementById('pesanKhususInfo').innerText='Pesan dari Admin • '+(pesanKhusus.waktu||'');
+}
+async function kirimPesanKhusus(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa mengirim pesan khusus.');
+  const teks=document.getElementById('teksPesanKhususAdmin').value.trim();
+  const target=[];
+  if(document.getElementById('targetPesanSantri').checked) target.push('SANTRI');
+  if(document.getElementById('targetPesanGuru').checked) target.push('GURU');
+  if(!teks) return alert('Tulis pesan khusus terlebih dahulu.');
+  if(!target.length) return alert('Pilih minimal satu sasaran pesan.');
+  pesanKhusus={teks,target,pengirim:user,waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})};
+  localStorage.setItem('pesan_khusus_nurulhikmah',JSON.stringify(pesanKhusus));
+  document.getElementById('teksPesanKhususAdmin').value='';
+  tampilPesanKhusus(); tampilInfoPesanKhususAdmin();
+  await cloudFlush();
+  alert('Pesan khusus tersimpan dan sudah dikirim ke cloud untuk akun sasaran.');
+}
+async function hapusPesanKhusus(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa menghapus pesan khusus.');
+  if(!pesanKhusus) return alert('Belum ada pesan khusus.');
+  if(!confirm('Hapus pesan khusus dari semua akun Santri/Guru?')) return;
+  pesanKhusus=null;
+  localStorage.setItem('pesan_khusus_nurulhikmah',JSON.stringify(null));
+  tampilPesanKhusus(); tampilInfoPesanKhususAdmin();
+  await cloudFlush();
+  alert('Pesan khusus sudah dihapus dari cloud dan akan hilang di semua akun sasaran.');
+}
+function tampilInfoPesanKhususAdmin(){
+  const el=document.getElementById('infoPesanKhususAdmin'); if(!el) return;
+  if(!pesanKhusus || !pesanKhusus.teks){el.innerText='Belum ada pesan khusus aktif.';return;}
+  const tujuan=(pesanKhusus.target||[]).map(x=>x==='SANTRI'?'Santri':'Guru').join(' dan ');
+  el.innerText='Pesan aktif untuk: '+tujuan+'. Dikirim: '+(pesanKhusus.waktu||'-');
 }
 function hubungiAmang(){
   let teks = 'Saya mengalami kesulitan masuk saat memasukan nama';
@@ -1192,25 +1279,66 @@ function cekTamuOtomatis(nama){
   let cocokWali = waliList.some(w=> adaKataSama(sisa, w.namaWali||''));
   return cocokSantri || cocokWali;
 }
-function cariAnakWali(namaLogin){
+function cariKandidatAnakWali(namaLogin){
   let acc = cariDisetujui(namaLogin);
-  if(acc && acc.role==='WALI' && Array.isArray(acc.anakNis)){
+  if(acc && acc.role==='WALI' && Array.isArray(acc.anakNis) && acc.anakNis.length){
     let nisOverride = new Set(acc.anakNis);
-    return santri.filter(s=> nisOverride.has(s.nis));
+    return santri.filter(s=>nisOverride.has(s.nis));
   }
-  if(acc && acc.role==='PENGURUS' && Array.isArray(acc.anakNis) && acc.anakNis.length>0){
+  if(acc && acc.role==='PENGURUS' && Array.isArray(acc.anakNis) && acc.anakNis.length){
     let nisOverride = new Set(acc.anakNis);
-    return santri.filter(s=> nisOverride.has(s.nis));
+    return santri.filter(s=>nisOverride.has(s.nis));
   }
-  let ketemuWali = waliList.filter(w=> adaKataSama(namaLogin, w.namaWali));
-  if(!ketemuWali.length){
-    ketemuWali = waliList.filter(w=> adaKataSamaAtauAwalan(namaLogin, w.namaWali));
-  }
+  let ketemuWali = waliList.filter(w=>adaKataSama(namaLogin,w.namaWali));
+  if(!ketemuWali.length) ketemuWali = waliList.filter(w=>adaKataSamaAtauAwalan(namaLogin,w.namaWali));
   if(!ketemuWali.length) return [];
-  let nisSet = new Set();
-  ketemuWali.forEach(w=> nisSet.add(w.nis));
-  return santri.filter(s=> nisSet.has(s.nis));
+  let nisSet = new Set(ketemuWali.map(w=>w.nis));
+  return santri.filter(s=>nisSet.has(s.nis));
 }
+function cariAnakWali(namaLogin){
+  let kandidat=cariKandidatAnakWali(namaLogin);
+  let pilihan=waliPilihanAnak[kunciNamaWali(namaLogin)];
+  if(pilihan){
+    let terpilih=kandidat.filter(s=>s.nis===pilihan);
+    if(terpilih.length) return terpilih;
+  }
+  return kandidat;
+}
+function tampilPilihanAnakWali(){
+  const wrap=document.getElementById('daftarPilihanAnakWali');
+  if(!wrap || !pendingWaliLogin) return;
+  const q=(document.getElementById('cariPilihanAnakWali').value||'').toLowerCase().trim();
+  const kandidat=pendingWaliLogin.kandidat.filter(s=>(s.nama+' '+s.nis).toLowerCase().includes(q));
+  if(!kandidat.length){wrap.innerHTML='<p class="small center">Santri tidak ditemukan.</p>';return;}
+  wrap.innerHTML=kandidat.map(s=>`<label style="display:flex;align-items:center;gap:10px;padding:11px;border:1px solid #e7f4ec;border-radius:10px;margin:6px 0;cursor:pointer"><input type="radio" name="pilihanAnakWali" value="${esc(s.nis)}" style="width:18px;height:18px" ${pendingWaliLogin.pilihan===s.nis?'checked':''}><span><b>${esc(s.nama)}</b><br><small>NIS: ${esc(s.nis)}</small></span></label>`).join('');
+}
+function bukaPilihanAnakWali(nama,kandidat){
+  pendingWaliLogin={nama,role:'WALI',kandidat,pilihan:''};
+  document.getElementById('infoPilihAnakWali').innerText='Nama wali "'+nama+'" terdaftar pada '+kandidat.length+' santri. Pilih satu santri untuk ditampilkan pada akun Wali ini.';
+  document.getElementById('cariPilihanAnakWali').value='';
+  tampilPilihanAnakWali();
+  document.getElementById('popupPilihAnakWali').classList.add('show');
+}
+function batalPilihAnakWali(){
+  document.getElementById('popupPilihAnakWali').classList.remove('show');
+  pendingWaliLogin=null;
+  user=''; role=''; waliAnak=[];
+  localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');
+}
+async function konfirmasiPilihAnakWali(){
+  if(!pendingWaliLogin) return;
+  const pilih=document.querySelector('input[name="pilihanAnakWali"]:checked');
+  if(!pilih) return alert('Pilih salah satu nama santri terlebih dahulu.');
+  const nama=pendingWaliLogin.nama, nis=pilih.value;
+  waliPilihanAnak[kunciNamaWali(nama)]=nis;
+  simpanWaliPilihanAnak();
+  document.getElementById('popupPilihAnakWali').classList.remove('show');
+  pendingWaliLogin=null;
+  await cloudFlush();
+  user=nama; role='WALI'; waliAnak=santri.filter(s=>s.nis===nis); santriAktif=null;
+  selesaikanLogin(nama,'WALI');
+}
+
 function cariSantriByLogin(namaLogin){
   let cocok = santri.filter(s=> adaKataSama(namaLogin, s.nama));
   if(!cocok.length) return null;
@@ -1250,39 +1378,58 @@ function bisaEdit(){ return isAdmin()||isPengurus(); }
 function bisaHapus(){ return isAdmin()||isPengurus(); }
 function bisaAbsen(){ return isAdmin()||isGuru(); }
 document.getElementById('tglAbsen').valueAsDate = new Date();
-if(user && role){
-  let roleBaru = tentukanRole(user);
+function selesaikanLogin(nama,roleFinal){
+  user=nama; role=roleFinal;
+  if(role==='WALI') waliAnak=cariAnakWali(nama);
+  if(role==='SANTRI' && !santriAktif) santriAktif=cariSantriByLogin(nama);
+  localStorage.setItem('user_nurulhikmah',user);
+  localStorage.setItem('role_nurulhikmah',role);
+  pengunjung.push({nama:user,role:role,waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});
+  simpanPengunjung();
+  showHome();
+}
+function pulihkanSesiLogin(){
+  if(!user || !role) return;
+  let namaTersimpan=user;
+  let roleBaru=tentukanRole(namaTersimpan);
   if(roleBaru==='TAMU_DITOLAK'){
-    localStorage.removeItem('user_nurulhikmah');
-    localStorage.removeItem('role_nurulhikmah');
-    user=''; role='';
-  } else {
-    role = roleBaru;
-    localStorage.setItem('role_nurulhikmah', role);
-    showHome();
+    localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');user='';role='';
+  }else if(roleBaru==='WALI'){
+    const kandidat=cariKandidatAnakWali(namaTersimpan);
+    const pilihan=waliPilihanAnak[kunciNamaWali(namaTersimpan)];
+    const pilihanValid=kandidat.some(s=>s.nis===pilihan);
+    if(kandidat.length>1 && !pilihanValid){
+      localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');user='';role='';
+      bukaPilihanAnakWali(namaTersimpan,kandidat);
+    }else{
+      role='WALI';waliAnak=pilihanValid?kandidat.filter(s=>s.nis===pilihan):kandidat;
+      localStorage.setItem('role_nurulhikmah',role);showHome();
+    }
+  }else{
+    role=roleBaru;localStorage.setItem('role_nurulhikmah',role);showHome();
   }
 }
 
 function login(){
-  let nama = document.getElementById('namaLogin').value.trim();
-  if(!nama){ document.getElementById('infoLogin').innerText='Isi nama dulu.'; return; }
-  user = nama; waliAnak = []; santriAktif = null;
-  role = tentukanRole(nama);
+  let nama=document.getElementById('namaLogin').value.trim();
+  if(!nama){document.getElementById('infoLogin').innerText='Isi nama dulu.';return;}
+  user=nama;waliAnak=[];santriAktif=null;
+  role=tentukanRole(nama);
   if(role==='TAMU_DITOLAK'){
-    if(!permintaanAkses.some(p=>p.nama.toLowerCase()===nama.toLowerCase()) && !cariDisetujui(nama)){
-      permintaanAkses.push({nama:nama, waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});
-      simpanPermintaan();
+    if(!permintaanAkses.some(p=>p.nama.toLowerCase()===nama.toLowerCase())&&!cariDisetujui(nama)){
+      permintaanAkses.push({nama:nama,waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});simpanPermintaan();
     }
-    document.getElementById('popupDitolak').classList.add('show');
-    return;
+    document.getElementById('popupDitolak').classList.add('show');return;
   }
-  if(role==='WALI'){ waliAnak = cariAnakWali(nama); }
-  if(role==='SANTRI' && !santriAktif){ santriAktif = cariSantriByLogin(nama); }
-  localStorage.setItem('user_nurulhikmah', user);
-  localStorage.setItem('role_nurulhikmah', role);
-  pengunjung.push({nama:user, role:role, waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});
-  simpanPengunjung();
-  showHome();
+  if(role==='WALI'){
+    const kandidat=cariKandidatAnakWali(nama);
+    const pilihan=waliPilihanAnak[kunciNamaWali(nama)];
+    const pilihanValid=kandidat.some(s=>s.nis===pilihan);
+    if(kandidat.length>1&&!pilihanValid){bukaPilihanAnakWali(nama,kandidat);return;}
+    if(pilihanValid) waliAnak=kandidat.filter(s=>s.nis===pilihan);
+    else waliAnak=kandidat;
+  }
+  selesaikanLogin(nama,role);
 }
 function showHome(){
   document.getElementById('loginPage').classList.add('hidden');
@@ -1299,6 +1446,8 @@ function showHome(){
   document.getElementById('guruInfo').classList.add('hidden');
   document.getElementById('cardPengunjung').classList.add('hidden');
   document.getElementById('cardPengumumanAdmin').classList.add('hidden');
+  document.getElementById('cardRevisiAbsenAdmin').classList.add('hidden');
+  document.getElementById('cardPesanKhususAdmin').classList.add('hidden');
   document.getElementById('cardPermintaanAkses').classList.add('hidden');
   document.getElementById('cardPermintaanHapus').classList.add('hidden');
   document.getElementById('btnEditDatabaseWrap').classList.add('hidden');
@@ -1314,6 +1463,7 @@ function showHome(){
   document.getElementById('cardAbsen').classList.remove('hidden');
   document.getElementById('thAksi').style.display='';
   tampilPengumuman();
+  tampilPesanKhusus();
   if(isSantri()){
     if(!santriAktif){ santriAktif = cariSantriByLogin(user); }
     document.getElementById('mainPage').classList.add('hidden');
@@ -1340,6 +1490,9 @@ function showHome(){
     document.getElementById('adminPanel').classList.remove('hidden');
     document.getElementById('cardPengunjung').classList.remove('hidden');
     document.getElementById('cardPengumumanAdmin').classList.remove('hidden');
+    document.getElementById('cardRevisiAbsenAdmin').classList.remove('hidden');
+    document.getElementById('cardPesanKhususAdmin').classList.remove('hidden');
+    tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin();
     document.getElementById('cardPermintaanAkses').classList.remove('hidden');
     document.getElementById('cardPermintaanHapus').classList.remove('hidden');
     document.getElementById('btnEditDatabaseWrap').classList.remove('hidden');
@@ -1372,34 +1525,26 @@ function statusAbsenHariIni(nis){
 }
 function pesanWaliByStatus(namaAnak, statusRaw){
   const n=esc(namaAnak);
-  const waktu=new Intl.DateTimeFormat('en-GB',{
-    timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
-  }).format(new Date()).split(':');
+  const waktu=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()).split(':');
   const menitSekarang=(Number(waktu[0])*60)+Number(waktu[1]);
   const s=statusRaw||'';
-
-  // 19.31 sampai 15.00 WIB: tampilkan pesan pengingat yang ditetapkan.
+  let label=s==='Hadir'?'Hadir':s==='Izin'?'Izin':s==='Sakit'?'Sakit':s==='Tanpa Keterangan'?'Tanpa Keterangan':'Belum Ada Update';
+  let cls=s==='Hadir'?'st-Hadir':s==='Izin'?'st-Izin':s==='Sakit'?'st-Sakit':s==='Tanpa Keterangan'?'st-Tanpa':'';
+  let pesan='';
   if(menitSekarang>=19*60+31 || menitSekarang<=15*60){
-    return {
-      label:'Pesan Pengingat',cls:'',
-      pesan:n+', hari ini sudah belajar mengaji. pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa '+n+' harus tetap jaga sholat, baca Qur\'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah '+n+', diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan '+n+' beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya '+n
-    };
-  }
-
-  // 15.01 sampai 19.30 WIB: tunggu update absen hari ini.
-  if(!s){
-    return {label:'Belum Ada Update',cls:'',pesan:'Belum Ada Update'};
-  }
-  if(s==='Hadir') return {label:'Hadir',cls:'st-Hadir',pesan:'<b>'+n+'</b> sedang belajar mengaji hari ini. Terus dukung dan doakan agar istiqamah dalam menuntut ilmu. Hadiahilah Al-Fatihah untuknya. 🤲'};
-  if(s==='Izin') return {label:'Izin',cls:'st-Izin',pesan:'<b>'+n+'</b> izin mengaji hari ini. Semoga urusannya dimudahkan dan dapat kembali belajar mengaji. Terus doakan dan beri dukungan. 🤲'};
-  if(s==='Sakit') return {label:'Sakit',cls:'st-Sakit',pesan:'<b>'+n+'</b> sedang sakit. Semoga Allah memberikan kesembuhan, kekuatan, dan kesehatan agar dapat kembali mengaji. Aamiin. 🤲'};
-  return {label:'Tanpa Keterangan',cls:'st-Tanpa',pesan:'<b>'+n+'</b> belum tercatat hadir atau izin hari ini. Mari terus dampingi, ingatkan dengan kasih sayang, dan doakan agar semangat kembali belajar mengaji. 🕌'};
+    pesan=n+', hari ini sudah belajar mengaji. pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa '+n+' harus tetap jaga sholat, baca Qur\'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah '+n+', diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan '+n+' beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya '+n;
+  } else if(!s){ pesan='Belum Ada Update'; }
+  else if(s==='Hadir') pesan='<b>'+n+'</b> sedang belajar mengaji hari ini. Terus dukung dan doakan agar istiqamah dalam menuntut ilmu. Hadiahilah Al-Fatihah untuknya. 🤲';
+  else if(s==='Izin') pesan='<b>'+n+'</b> izin mengaji hari ini. Semoga urusannya dimudahkan dan dapat kembali belajar mengaji. Terus doakan dan beri dukungan. 🤲';
+  else if(s==='Sakit') pesan='<b>'+n+'</b> sedang sakit. Semoga Allah memberikan kesembuhan, kekuatan, dan kesehatan agar dapat kembali mengaji. Aamiin. 🤲';
+  else pesan='<b>'+n+'</b> belum tercatat hadir atau izin hari ini. Mari terus dampingi, ingatkan dengan kasih sayang, dan doakan agar semangat kembali belajar mengaji. 🕌';
+  return {label,cls,pesan};
 }
 function kartuAnakWali(s){
   let idx=santri.findIndex(x=>x.nis===s.nis);
   let w=cariWaliByNIS(s.nis);
   let statusHariIni=statusAbsenHariIni(s.nis); let info = pesanWaliByStatus(s.nama, statusHariIni);
-  return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${info.cls}">${info.label}</b><br><span class="small">Tanggal: ${document.getElementById('tglAbsen').value || '-'}</span></p><div class="wali-pesan">${info.pesan}</div><button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button></div>`;
+  return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${info.cls}">${info.label}</b><br><span class="small">Tanggal: ${new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}</span></p><div class="wali-pesan">${info.pesan}</div><button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button></div>`;
 }
 function tampilWaliPage(){
   waliAnak = cariAnakWali(user);
@@ -1691,6 +1836,91 @@ function updateRekapSantri(tglVal, santriSaatIni){
   });
   simpanRekapSantri();
 }
+function tanggalWIBHariIni(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
+function bukaPopupRevisiAbsen(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa merevisi absen.');
+  santriDipilihUntukRevisi=null;
+  document.getElementById('cariSantriRevisi').value='';
+  document.getElementById('formDetailRevisi').classList.add('hidden');
+  tampilPilihanSantriRevisi();
+  document.getElementById('popupRevisiAbsen').classList.add('show');
+}
+function tutupPopupRevisiAbsen(){document.getElementById('popupRevisiAbsen').classList.remove('show');santriDipilihUntukRevisi=null;}
+function tampilPilihanSantriRevisi(){
+  const q=(document.getElementById('cariSantriRevisi').value||'').toLowerCase().trim();
+  const wrap=document.getElementById('pilihanSantriRevisi'); wrap.innerHTML='';
+  const daftar=santri.filter(x=>(String(x.nama||'').toLowerCase().includes(q)||String(x.nis||'').toLowerCase().includes(q)));
+  if(!daftar.length){wrap.innerHTML='<p class="small center">Santri tidak ditemukan.</p>';return;}
+  daftar.forEach(s=>{
+    const b=document.createElement('button'); b.type='button'; b.className='secondary'; b.style='width:100%;text-align:left;margin:3px 0';
+    b.innerHTML='<b>'+esc(s.nama)+'</b> <span class="small">NIS: '+esc(s.nis)+'</span>';
+    b.onclick=()=>pilihSantriUntukRevisi(s.nis); wrap.appendChild(b);
+  });
+}
+function pilihSantriUntukRevisi(nis){
+  santriDipilihUntukRevisi=nis;
+  const s=santri.find(x=>x.nis===nis); if(!s) return;
+  const tgl=document.getElementById('tanggalRevisiAbsen');
+  if(!tgl.value) tgl.value=tanggalWIBHariIni();
+  const rec=rekapSantri[nis]; const old=rec&&rec.perTanggal?rec.perTanggal[tgl.value]:'';
+  const riw=riwayat.find(x=>x.tglVal===tgl.value&&Array.isArray(x.data));
+  const row=riw?riw.data.find(x=>x.nis===nis):null;
+  const statusLama=(row&&row.absen)||(old)||(tgl.value===tanggalWIBHariIni()?s.absen:'')||'Tanpa Keterangan';
+  document.getElementById('infoSantriRevisi').innerText=s.nama+' • NIS: '+s.nis+' • Status tersimpan: '+statusLama;
+  document.getElementById('statusRevisiAbsen').value=statusLama;
+  document.getElementById('formDetailRevisi').classList.remove('hidden');
+}
+async function perbaruiPilihanStatusRevisi(){
+  if(santriDipilihUntukRevisi) pilihSantriUntukRevisi(santriDipilihUntukRevisi);
+}
+async function simpanRevisiAbsen(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa merevisi absen.');
+  if(!santriDipilihUntukRevisi) return alert('Pilih santri terlebih dahulu.');
+  const s=santri.find(x=>x.nis===santriDipilihUntukRevisi); if(!s) return alert('Data santri tidak ditemukan.');
+  const tgl=document.getElementById('tanggalRevisiAbsen').value;
+  const statusBaru=document.getElementById('statusRevisiAbsen').value;
+  if(!tgl) return alert('Pilih tanggal absen yang akan direvisi.');
+  const rec=rekapSantri[s.nis]||(rekapSantri[s.nis]={hadir:0,sakit:0,izin:0,tanpaKet:0,perTanggal:{}});
+  if(!rec.perTanggal) rec.perTanggal={};
+  let idxRiwayat=riwayat.findIndex(x=>x.tglVal===tgl&&Array.isArray(x.data));
+  let barisLama=idxRiwayat>=0?riwayat[idxRiwayat].data.find(x=>x.nis===s.nis):null;
+  let statusLama=(barisLama&&barisLama.absen)||rec.perTanggal[tgl]||(tgl===tanggalWIBHariIni()?s.absen:'')||'';
+  const keyStatus=st=>st==='Hadir'?'hadir':st==='Sakit'?'sakit':st==='Izin'?'izin':'tanpaKet';
+  if(statusLama){const k=keyStatus(statusLama);rec[k]=Math.max(0,(Number(rec[k])||0)-1);}
+  rec[keyStatus(statusBaru)]=(Number(rec[keyStatus(statusBaru)])||0)+1;
+  rec.perTanggal[tgl]=statusBaru;
+  if(tgl===tanggalWIBHariIni()) s.absen=statusBaru;
+  if(idxRiwayat<0){
+    const d=new Date(tgl+'T12:00:00');
+    const dataSantri=santri.map(x=>{const rr=rekapSantri[x.nis];const status=(rr&&rr.perTanggal&&rr.perTanggal[tgl])||(tgl===tanggalWIBHariIni()?x.absen:'')||'Tanpa Keterangan';return {nama:x.nama,nis:x.nis,absen:status};});
+    riwayat.unshift({tglVal:tgl,hari:d.toLocaleDateString('id-ID',{weekday:'long'}),tanggal:d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}),jam:new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),total:santri.length,data:dataSantri,hadir:0,sakit:0,izin:0,tanpaKet:0});
+    idxRiwayat=0;
+  }
+  const rr=riwayat[idxRiwayat];
+  if(!Array.isArray(rr.data)) rr.data=[];
+  const idxRow=rr.data.findIndex(x=>x.nis===s.nis);
+  const dataRow={nama:s.nama,nis:s.nis,absen:statusBaru};
+  if(idxRow>=0) rr.data[idxRow]=dataRow; else rr.data.push(dataRow);
+  rr.total=rr.data.length;
+  rr.hadir=rr.data.filter(x=>x.absen==='Hadir').length;
+  rr.sakit=rr.data.filter(x=>x.absen==='Sakit').length;
+  rr.izin=rr.data.filter(x=>x.absen==='Izin').length;
+  rr.tanpaKet=rr.data.filter(x=>!x.absen||x.absen==='Tanpa Keterangan').length;
+  revisiAbsenLog.unshift({nama:s.nama,nis:s.nis,tanggal:tgl,dari:statusLama||'Belum tercatat',menjadi:statusBaru,oleh:user,waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});
+  simpanRekapSantri(); simpanRiwayat();
+  localStorage.setItem('santri_nurulhikmah',JSON.stringify(santri));
+  localStorage.setItem('revisi_absen_nurulhikmah',JSON.stringify(revisiAbsenLog));
+  tampilSantri(); tampilRiwayat(); tampilLogRevisiAbsen();
+  if(isWali()) tampilWaliPage(); if(isSantri()) tampilSantriPage();
+  await cloudFlush();
+  tutupPopupRevisiAbsen();
+  alert('Revisi absen berhasil disimpan dan dikirim ke cloud. Perangkat lain akan menerima pembaruan otomatis.');
+}
+function tampilLogRevisiAbsen(){
+  const el=document.getElementById('logRevisiAbsen'); if(!el) return;
+  if(!revisiAbsenLog.length){el.innerHTML='<p class="small">Belum ada riwayat revisi absen.</p>';return;}
+  el.innerHTML='<b>Riwayat Revisi Absen</b>'+revisiAbsenLog.slice(0,30).map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><b>'+esc(x.nama)+'</b> <span class="small">('+esc(x.nis)+')</span><br><span class="small">'+esc(x.tanggal)+' • '+esc(x.dari)+' → <b>'+esc(x.menjadi)+'</b></span><br><span class="small">Direvisi '+esc(x.waktu||'')+'</span></div>').join('');
+}
 async function shareWA(){
   if(!bisaAbsen()) return alert('Role kamu tidak bisa absen / bagikan');
   let tglVal = document.getElementById('tglAbsen').value;
@@ -1710,5 +1940,21 @@ async function shareWA(){
   await cloudFlush();
 }
 </script>
+<div id="popupRevisiAbsen" class="modal" onclick="if(event.target===this) tutupPopupRevisiAbsen()">
+<div class="modal-box">
+<div style="display:flex;justify-content:space-between;align-items:start;gap:10px"><h3>🛠️ Revisi Absen</h3><button class="del" style="font-size:20px" onclick="tutupPopupRevisiAbsen()">✕</button></div>
+<p class="small">Cari lalu pilih santri yang absennya akan diperbaiki.</p>
+<input id="cariSantriRevisi" placeholder="Cari nama atau NIS santri..." oninput="tampilPilihanSantriRevisi()">
+<div id="pilihanSantriRevisi" style="max-height:230px;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:8px;margin:8px 0"></div>
+<div id="formDetailRevisi" class="hidden">
+<p id="infoSantriRevisi" class="small"></p>
+<label><b>Tanggal Absen yang Direvisi</b></label><input type="date" id="tanggalRevisiAbsen" onchange="perbaruiPilihanStatusRevisi()">
+<label><b>Status yang Benar</b></label>
+<select id="statusRevisiAbsen" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;margin:6px 0 12px">
+<option value="Hadir">Hadir</option><option value="Izin">Izin</option><option value="Sakit">Sakit</option><option value="Tanpa Keterangan">Tanpa Keterangan</option>
+</select>
+<div class="row"><button onclick="simpanRevisiAbsen()">Revisi</button><button class="secondary" onclick="tutupPopupRevisiAbsen()">Kembali</button></div>
+</div>
+</div></div>
 </body>
 </html>
