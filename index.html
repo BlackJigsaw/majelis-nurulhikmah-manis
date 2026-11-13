@@ -540,7 +540,7 @@ async function ambilDariCloud(){
       let j2 = await r2.json();
       if(j2.result && k!=='user_nurulhikmah' && k!=='role_nurulhikmah'){ _setAsli(k, j2.result); }
    }
-  let _hashBaru = daftar.map(k=>localStorage.getItem(k)).join('|').length + '|' + daftar.join(',');
+  let _hashBaru = daftar.map(k=>localStorage.getItem(k)).join('|') + '|' + daftar.join(',');
   if(daftar.length>0 && sessionStorage.getItem('hashCloud')!==_hashBaru){ sessionStorage.setItem('hashCloud',_hashBaru); location.reload(); }
   }catch(e){}
 }
