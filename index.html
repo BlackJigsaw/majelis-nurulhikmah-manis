@@ -521,29 +521,95 @@ th{background:#f7f7f7;font-size:12px}
 </div></div>
 
 <script>
-  // TEMPELAN CLOUD AUTO - JANGAN DIHAPUS
+  // SINKRONISASI CLOUD UPSTASH (mempertahankan database dan kredensial yang sudah ada)
 const KV_URL = "https://touching-monster-151282.upstash.io";
 const KV_TOKEN = "gQAAAAAAAk7yAAIgcDE1ZWIyYTE4ZTQ2YWM0ZTkyODY1MDU2ZTBjMzljN2RjOA";
 const _setAsli = localStorage.setItem.bind(localStorage);
-localStorage.setItem = function(kunci, nilai){
-  _setAsli(kunci, nilai);
-  fetch(KV_URL + "/set/" + kunci, { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: nilai }).catch(()=>{});
-};
-async function ambilDariCloud(){
-  try{
-    let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }});
-    let j = await r.json();
-    let daftar = j.result || [];
-    for(let k of daftar){
-      let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }});
-      let j2 = await r2.json();
-      if(j2.result && k!=='user_nurulhikmah' && k!=='role_nurulhikmah'){ _setAsli(k, j2.result); }
-    }
-    if(daftar.length > 0 && !sessionStorage.getItem('sudahSync')){ sessionStorage.setItem('sudahSync','1'); location.reload(); }
-  }catch(e){}
+const _removeAsli = localStorage.removeItem.bind(localStorage);
+const CLOUD_DATA_KEYS = new Set([
+  'santri_nurulhikmah','riwayat_nurulhikmah','rekap_santri_nurulhikmah','wali_nurulhikmah',
+  'struktur_nurulhikmah','permintaan_akses_nurulhikmah','disetujui_nurulhikmah',
+  'permintaan_hapus_santri_nurulhikmah','pengumuman_nurulhikmah','pengunjung_nurulhikmah'
+]);
+let cloudReady = false;
+let cloudApplying = false;
+let cloudQueue = Promise.resolve();
+const cloudPending = new Map();
+const cloudSeen = new Map();
+function cloudHeaders(){ return {Authorization:'Bearer '+KV_TOKEN}; }
+function cloudWrite(kunci, nilai){
+  if(!cloudReady || cloudApplying || !CLOUD_DATA_KEYS.has(kunci)) return Promise.resolve();
+  const value = String(nilai);
+  cloudPending.set(kunci, value);
+  cloudQueue = cloudQueue.then(async()=>{
+    const current = cloudPending.get(kunci);
+    if(current===undefined) return;
+    const r = await fetch(KV_URL+'/set/'+encodeURIComponent(kunci), {method:'POST',headers:{...cloudHeaders(),'Content-Type':'text/plain'},body:current});
+    if(!r.ok) throw new Error('Cloud write gagal: '+kunci);
+    cloudSeen.set(kunci,current);
+    if(cloudPending.get(kunci)===current) cloudPending.delete(kunci);
+  }).catch(e=>console.warn('Sinkronisasi cloud:',e));
+  return cloudQueue;
 }
-ambilDariCloud();
-// AKHIR TEMPELAN CLOUD AUTO
+localStorage.setItem = function(kunci,nilai){
+  _setAsli(kunci,nilai);
+  if(CLOUD_DATA_KEYS.has(kunci)) cloudWrite(kunci,nilai);
+};
+async function cloudGetAll(){
+  const r=await fetch(KV_URL+'/keys/*',{headers:cloudHeaders()});
+  if(!r.ok) throw new Error('Tidak dapat membaca daftar cloud');
+  const j=await r.json();
+  const keys=Array.isArray(j.result)?j.result:[];
+  const hasil={};
+  await Promise.all(keys.filter(k=>CLOUD_DATA_KEYS.has(k)).map(async k=>{
+    const rr=await fetch(KV_URL+'/get/'+encodeURIComponent(k),{headers:cloudHeaders()});
+    if(!rr.ok) return;
+    const jj=await rr.json();
+    if(jj && jj.result!==null && jj.result!==undefined) hasil[k]=String(jj.result);
+  }));
+  return hasil;
+}
+function muatStateDariLocal(){
+  try{ const v=localStorage.getItem('santri_nurulhikmah'); if(v) santri=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('riwayat_nurulhikmah'); if(v) riwayat=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('rekap_santri_nurulhikmah'); if(v) rekapSantri=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('wali_nurulhikmah'); if(v) waliList=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('struktur_nurulhikmah'); if(v) strukturData=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('permintaan_akses_nurulhikmah'); if(v) permintaanAkses=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('disetujui_nurulhikmah'); if(v) disetujuiList=JSON.parse(v).map(x=>typeof x==='string'?{nama:x,role:'TAMU',anakNis:[],viaAcc:true}:{nama:x.nama,role:x.role||'TAMU',anakNis:Array.isArray(x.anakNis)?x.anakNis:[],viaAcc:!!x.viaAcc}); }catch(e){}
+  try{ const v=localStorage.getItem('permintaan_hapus_santri_nurulhikmah'); if(v) permintaanHapusSantri=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('pengumuman_nurulhikmah'); if(v) pengumuman=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('pengunjung_nurulhikmah'); if(v) pengunjung=JSON.parse(v); }catch(e){}
+}
+function refreshTampilanSetelahCloud(){
+  if(!cloudReady || !user || !role) return;
+  muatStateDariLocal();
+  if(isWali()) tampilWaliPage();
+  else if(isSantri()) tampilSantriPage();
+  else if(isPengurus()){ tampilPengurusPage(); tampilRiwayatPengurus(); }
+  else if(isAdmin() || isGuru()){ tampilSantri(); tampilRiwayat(); if(isAdmin()){tampilPermintaanAkses();tampilPermintaanHapus();tampilPengunjung(); if(document.getElementById('editDatabasePage').classList.contains('show')) tampilEditDatabase();} }
+  tampilPengumuman();
+}
+async function ambilDariCloud(awal=false){
+  try{
+    const data=await cloudGetAll();
+    cloudApplying=true;
+    Object.entries(data).forEach(([k,v])=>{
+      if(cloudPending.has(k)) return;
+      if(localStorage.getItem(k)!==v){ _setAsli(k,v); }
+      cloudSeen.set(k,v);
+    });
+    cloudApplying=false;
+    cloudReady=true;
+    if(!awal) refreshTampilanSetelahCloud();
+    else setTimeout(refreshTampilanSetelahCloud,0);
+  }catch(e){ cloudApplying=false; cloudReady=true; console.warn('Cloud belum dapat disinkronkan:',e); }
+}
+function cloudFlush(){ return cloudQueue; }
+ambilDariCloud(true);
+// Pembaruan lintas perangkat tanpa reload halaman; data lokal hanya berubah jika nilai cloud memang berbeda.
+setInterval(()=>ambilDariCloud(false),8000);
+// AKHIR SINKRONISASI CLOUD
 const dataAwal = [
 ["Abil","26110001"],["Akang","26110002"],["Albi","26110003"],["Atika","26110004"],["Aurel","26110005"],["Ayra","26110006"],["Azkia","26110007"],["Daffi","26110008"],["Darel","26110009"],["Ega","26110010"],["Eja","26110011"],["Elang","26110012"],["Fikri","26110013"],["Firza","26110014"],["Habibah","26110015"],["Hafiz","26110016"],["Hana","26110017"],["Hani","26110018"],["Hayya","26110019"],["Iki","26110020"],["Iski","26110021"],["Kamila","26110022"],["Khansa","26110023"],["Koko","26110024"],["Lintang","26110025"],["Nabila","26110026"],["Nadia","26110027"],["Nayya","26110028"],["Nayya","26110029"],["Opal","26110030"],["Pasha","26110031"],["Raffa","26110032"],["Rafka","26110033"],["Raisya","26110034"],["Ridwan (dodi)","26110035"],["Ridwan (wancoy)","26110036"],["Salsa","26110037"],["Satya","26110038"],["Yajna","26110039"],["Zehan","26110040"]
 ].map(x=>({nama:x[0], nis:x[1], absen:''}));
@@ -1296,19 +1362,29 @@ function pesanSantriByStatus(status){
   return '<b>Kemana nich?</b> Ngaji yu! Jangan jauhin Allah dan Rosul-Nya yaaa. Masa 24 jam hidup sehari, ga ada waktu buat Allah dan Rosul-Nya. <b>Ngaji yu, ngaji!</b> Kami kangen kamu di majelis. Ditunggu besok ya! 🕌✨';
 }
 // ===== PESAN WALI PER STATUS ANAK =====
+function statusAbsenHariIni(nis){
+  const hariIni=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Jakarta'});
+  const rec=rekapSantri[nis];
+  if(rec && rec.perTanggal && Object.prototype.hasOwnProperty.call(rec.perTanggal,hariIni)) return rec.perTanggal[hariIni];
+  const riw=riwayat.find(x=>x.tglVal===hariIni && Array.isArray(x.data));
+  if(riw){ const s=riw.data.find(x=>x.nis===nis); if(s) return s.absen||'Tanpa Keterangan'; }
+  return '';
+}
 function pesanWaliByStatus(namaAnak, statusRaw){
-  let s = statusRaw || '';
-  let n = esc(namaAnak);
-  if(!s) return {label:'Belum Update', cls:'', pesan:'Guru belum melakukan update absen, harap tunggu 🙏'};
-  if(s==='Hadir') return {label:'Hadir', cls:'st-Hadir', pesan:'<b>'+n+'</b> Anak Anda sedang Belajar Mengaji. Teruslah Dukung dan Jangan Berhenti mendo\'akannya. Mungkin do\'a anda untuk orang lain bisa dikabul ataupun tidak, tapi do\'a anda sangat mujarab untuk anak anda. Hadiahilah Al-Fatihah Untuknya. 🤲'};
-  if(s==='Izin') return {label:'Izin', cls:'st-Izin', pesan:'<b>'+n+'</b> anak anda sedang izin mengaji hari ini. Semoga cepat selesai urusannya. Terus do\'akan dan dukung, ingatkan anaknya agar Mengaji. 🤲'};
-  if(s==='Sakit') return {label:'Sakit', cls:'st-Sakit', pesan:'<b>'+n+'</b> yang sedang sakit, semoga cepet sembuh ya. Nawaitu li Qiro-atil Fatihah Li Tholabi Syifaa Lii <b>'+n+'</b> Al-Fatihah ... 🤲'};
-  return {label:'Tanpa Keterangan', cls:'st-Tanpa', pesan:'<b>'+n+'</b> sedang perlahan belajar menjauhi kewajibannya yaitu Mengaji. Terus do\'akan dan dukung, ingatkan agar terus belajar mengaji. Karena bagi setan, seseorang yang mengaji lebih merepotkan dari pada 1000 hamba ahli ibadah yang tidak paham ilmu agama. Jadi setan tidak akan membiarkan itu terjadi, maka bantu agar setan tidak memenangkan <b>'+n+'</b> agar terus menjadi manusia yang tidak paham agama. 🕌'};
+  let n=esc(namaAnak);
+  const jam=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
+  if(jam>=19 || jam<4) return {label:'Pesan Malam',cls:'',pesan:'<b>'+n+'</b>, semoga malam ini Allah menjaga langkahmu, menenangkan hatimu, dan menguatkan niatmu untuk terus dekat dengan Al-Qur’an. Jangan tinggalkan sholat, basahi lisan dengan dzikir dan sholawat, serta istirahatlah dengan baik. Esok adalah kesempatan baru untuk kembali belajar dan menjadi lebih baik. Semoga Allah menjadikanmu anak yang shalih/shalihah, berilmu, dan istiqamah. Aamiin 🤲🌙'};
+  let s=statusRaw||'';
+  if(!s) return {label:'Guru belum Update',cls:'',pesan:'Guru belum Update absen hari ini. Silakan tunggu informasi terbaru dari guru 🙏'};
+  if(s==='Hadir') return {label:'Hadir',cls:'st-Hadir',pesan:'<b>'+n+'</b> sedang belajar mengaji hari ini. Terus dukung dan doakan agar istiqamah dalam menuntut ilmu. Hadiahilah Al-Fatihah untuknya. 🤲'};
+  if(s==='Izin') return {label:'Izin',cls:'st-Izin',pesan:'<b>'+n+'</b> izin mengaji hari ini. Semoga urusannya dimudahkan dan dapat kembali belajar mengaji. Terus doakan dan beri dukungan. 🤲'};
+  if(s==='Sakit') return {label:'Sakit',cls:'st-Sakit',pesan:'<b>'+n+'</b> sedang sakit. Semoga Allah memberikan kesembuhan, kekuatan, dan kesehatan agar dapat kembali mengaji. Aamiin. 🤲'};
+  return {label:'Tanpa Keterangan',cls:'st-Tanpa',pesan:'<b>'+n+'</b> belum tercatat hadir atau izin hari ini. Mari terus dampingi, ingatkan dengan kasih sayang, dan doakan agar semangat kembali belajar mengaji. 🕌'};
 }
 function kartuAnakWali(s){
   let idx=santri.findIndex(x=>x.nis===s.nis);
   let w=cariWaliByNIS(s.nis);
-  let info = pesanWaliByStatus(s.nama, s.absen);
+  let statusHariIni=statusAbsenHariIni(s.nis); let info = pesanWaliByStatus(s.nama, statusHariIni);
   return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${info.cls}">${info.label}</b><br><span class="small">Tanggal: ${document.getElementById('tglAbsen').value || '-'}</span></p><div class="wali-pesan">${info.pesan}</div><button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button></div>`;
 }
 function tampilWaliPage(){
@@ -1319,6 +1395,11 @@ function tampilWaliPage(){
   wrap.innerHTML='';
   waliAnak.forEach(s=>{ let div=document.createElement('div'); div.innerHTML=kartuAnakWali(s); wrap.appendChild(div); });
 }
+function pesanMalamSantri(nama){
+  const jam=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
+  if(jam>=19 || jam<4) return '<b>'+esc(nama)+'</b>, semoga Allah menjaga langkahmu malam ini, menenangkan hatimu, dan menguatkan niatmu untuk terus dekat dengan Al-Qur’an. Jangan tinggalkan sholat, perbanyak dzikir dan sholawat, serta istirahatlah dengan baik. Esok adalah kesempatan baru untuk belajar dan menjadi lebih baik. Semoga Allah menjadikanmu pribadi yang berilmu dan istiqamah. Aamiin 🤲🌙';
+  return '';
+}
 function tampilSantriPage(){
   if(!santriAktif){ santriAktif = cariSantriByLogin(user); }
   if(!santriAktif){ document.getElementById('santriPage').innerHTML='<p class="small center">Data santri tidak ditemukan. Hubungi Admin.</p>'; return; }
@@ -1327,16 +1408,16 @@ function tampilSantriPage(){
   let tglVal = document.getElementById('tglAbsen').value;
   let d = tglVal ? new Date(tglVal) : new Date();
   let tanggalStr = d.toLocaleDateString('id-ID',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
-  let statusHariIni = sNow.absen || 'Tanpa Keterangan';
+  let statusHariIni = statusAbsenHariIni(sNow.nis) || 'Guru belum Update';
   document.getElementById('santriHalo').innerText = "Assalamu'alaikum, "+sNow.nama+"!";
   document.getElementById('santriNamaNIS').innerText = sNow.nama+' • NIS: '+sNow.nis;
   document.getElementById('santriTanggal').innerText = 'Tanggal: '+tanggalStr;
   let elStatus = document.getElementById('santriStatusHariIni');
-  elStatus.innerText = statusHariIni==='Tanpa Keterangan' ? 'Tanpa Keterangan' : statusHariIni;
-  elStatus.style.color = statusHariIni==='Hadir' ? '#0b6e4f' : statusHariIni==='Sakit' ? '#e67e22' : statusHariIni==='Izin' ? '#2980b9' : '#c0392b';
-  let emoji = statusHariIni==='Hadir' ? '✅ ' : statusHariIni==='Izin' ? '📝 ' : statusHariIni==='Sakit' ? '🤒 ' : '🥺 ';
+  elStatus.innerText = statusHariIni;
+  elStatus.style.color = statusHariIni==='Hadir' ? '#0b6e4f' : statusHariIni==='Sakit' ? '#e67e22' : statusHariIni==='Izin' ? '#2980b9' : statusHariIni==='Guru belum Update' ? '#7f8c8d' : '#c0392b';
+  let emoji = statusHariIni==='Hadir' ? '✅ ' : statusHariIni==='Izin' ? '📝 ' : statusHariIni==='Sakit' ? '🤒 ' : statusHariIni==='Guru belum Update' ? '⏳ ' : '🥺 ';
   elStatus.innerText = emoji + elStatus.innerText;
-  document.getElementById('santriPesan').innerHTML = pesanSantriByStatus(statusHariIni);
+  document.getElementById('santriPesan').innerHTML = pesanMalamSantri(sNow.nama) || (statusHariIni==='Guru belum Update' ? 'Guru belum Update absen hari ini. Silakan tunggu informasi terbaru dari guru 🙏' : pesanSantriByStatus(statusHariIni));
   let r = rekapSantri[sNow.nis] || {hadir:0, sakit:0, izin:0, tanpaKet:0, perTanggal:{}};
   let total = r.hadir + r.sakit + r.izin + r.tanpaKet;
   let persen = total>0 ? Math.round(r.hadir/total*100) : 0;
@@ -1525,7 +1606,7 @@ function tampilSantri(){
     tbody.appendChild(tr);
   });
 }
-function setAbsen(i,val){ if(!bisaAbsen()) return alert('Role kamu tidak bisa absen'); santri[i].absen=val; localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri)); }
+function setAbsen(i,val){ if(!bisaAbsen()) return alert('Role kamu tidak bisa absen'); if(!santri[i]) return; santri[i].absen=val; localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri)); if(isAdmin()||isGuru()) tampilSantri(); }
 function backupData(){ if(!(isAdmin()||isPengurus())) return alert('Hanya Admin / Pengurus'); let data = JSON.stringify({tanggal:new Date().toISOString(), santri, rekapSantri, waliList, pengunjung, pengumuman, permintaanAkses, permintaanHapusSantri, disetujuiList, strukturData}, null, 2); let blob = new Blob([data], {type:'application/json'}); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='backup-santri-nurul-hikmah.json'; a.click(); }
 function exportPDF(){
  let tgl=document.getElementById('tglAbsen')?document.getElementById('tglAbsen').value:'';
@@ -1596,7 +1677,7 @@ function updateRekapSantri(tglVal, santriSaatIni){
   });
   simpanRekapSantri();
 }
-function shareWA(){
+async function shareWA(){
   if(!bisaAbsen()) return alert('Role kamu tidak bisa absen / bagikan');
   let tglVal = document.getElementById('tglAbsen').value;
   let d = tglVal ? new Date(tglVal) : new Date();
@@ -1612,6 +1693,7 @@ function shareWA(){
   if(idxSama>=0) riwayat[idxSama]=dataBaru; else riwayat.unshift(dataBaru);
   simpanRiwayat(); tampilRiwayat(); updateRekapSantri(tglVal, santri);
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
+  await cloudFlush();
 }
 </script>
 </body>
