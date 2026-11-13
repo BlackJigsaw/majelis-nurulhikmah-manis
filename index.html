@@ -1841,6 +1841,8 @@ function bukaPopupRevisiAbsen(){
   if(!isAdmin()) return alert('Hanya Admin yang bisa merevisi absen.');
   santriDipilihUntukRevisi=null;
   document.getElementById('cariSantriRevisi').value='';
+  const inputReset=document.getElementById('tanggalResetAbsen');
+  if(inputReset && !inputReset.value) inputReset.value=tanggalWIBHariIni();
   document.getElementById('formDetailRevisi').classList.add('hidden');
   tampilPilihanSantriRevisi();
   document.getElementById('popupRevisiAbsen').classList.add('show');
@@ -1916,6 +1918,63 @@ async function simpanRevisiAbsen(){
   tutupPopupRevisiAbsen();
   alert('Revisi absen berhasil disimpan dan dikirim ke cloud. Perangkat lain akan menerima pembaruan otomatis.');
 }
+
+
+async function resetAbsenHariTertentu(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa mereset absen.');
+  const tgl=document.getElementById('tanggalResetAbsen').value;
+  if(!tgl) return alert('Pilih tanggal yang akan di-reset terlebih dahulu.');
+  const d=new Date(tgl+'T12:00:00');
+  const label=d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  if(!confirm('Yakin reset seluruh data absen tanggal '+label+'? Data rekap dan riwayat tanggal ini akan dihapus dari cloud dan semua perangkat.')) return;
+  let jumlahRekap=0;
+  Object.keys(rekapSantri||{}).forEach(nis=>{
+    const rec=rekapSantri[nis];
+    if(!rec || !rec.perTanggal || !Object.prototype.hasOwnProperty.call(rec.perTanggal,tgl)) return;
+    delete rec.perTanggal[tgl];
+    jumlahRekap++;
+    const vals=Object.values(rec.perTanggal);
+    rec.hadir=vals.filter(x=>x==='Hadir').length;
+    rec.sakit=vals.filter(x=>x==='Sakit').length;
+    rec.izin=vals.filter(x=>x==='Izin').length;
+    rec.tanpaKet=vals.filter(x=>!x||x==='Tanpa Keterangan').length;
+  });
+  const sebelum=riwayat.length;
+  riwayat=riwayat.filter(x=>x.tglVal!==tgl);
+  if(tgl===tanggalWIBHariIni()){
+    santri.forEach(x=>{x.absen='';});
+    localStorage.setItem('santri_nurulhikmah',JSON.stringify(santri));
+  }
+  simpanRekapSantri();
+  simpanRiwayat();
+  tampilSantri(); tampilRiwayat(); tampilLogRevisiAbsen();
+  if(typeof cloudFlush==='function') await cloudFlush();
+  document.getElementById('formDetailRevisi').classList.add('hidden');
+  santriDipilihUntukRevisi=null;
+  alert('Reset tanggal '+label+' berhasil. '+jumlahRekap+' rekap santri dan '+(sebelum-riwayat.length)+' riwayat absen dihapus. Perubahan dikirim ke cloud.');
+}
+
+async function resetSemuaAbsenCloud(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa mereset seluruh absen.');
+  const yakin=confirm('PERINGATAN: Semua data rekap dan riwayat absen yang tersimpan di cloud akan dihapus, termasuk data percobaan. Status absen aktif semua santri juga dikosongkan. Data santri dan wali tidak dihapus. Lanjutkan?');
+  if(!yakin) return;
+  const konfirmasi=prompt('Untuk memastikan, ketik RESET SEMUA ABSEN:');
+  if(konfirmasi!=='RESET SEMUA ABSEN') return alert('Reset dibatalkan karena teks konfirmasi tidak cocok.');
+  const jumlahRiwayat=riwayat.length;
+  const jumlahSantri=santri.length;
+  rekapSantri={};
+  riwayat=[];
+  santri.forEach(x=>{x.absen='';});
+  simpanRekapSantri();
+  simpanRiwayat();
+  localStorage.setItem('santri_nurulhikmah',JSON.stringify(santri));
+  tampilSantri(); tampilRiwayat(); tampilLogRevisiAbsen();
+  if(typeof cloudFlush==='function') await cloudFlush();
+  document.getElementById('formDetailRevisi').classList.add('hidden');
+  santriDipilihUntukRevisi=null;
+  alert('Seluruh data absen berhasil direset: '+jumlahRiwayat+' riwayat dihapus dan status '+jumlahSantri+' santri dikosongkan. Data cloud diperbarui untuk semua perangkat.');
+}
+
 function tampilLogRevisiAbsen(){
   const el=document.getElementById('logRevisiAbsen'); if(!el) return;
   if(!revisiAbsenLog.length){el.innerHTML='<p class="small">Belum ada riwayat revisi absen.</p>';return;}
@@ -1943,7 +2002,17 @@ async function shareWA(){
 <div id="popupRevisiAbsen" class="modal" onclick="if(event.target===this) tutupPopupRevisiAbsen()">
 <div class="modal-box">
 <div style="display:flex;justify-content:space-between;align-items:start;gap:10px"><h3>🛠️ Revisi Absen</h3><button class="del" style="font-size:20px" onclick="tutupPopupRevisiAbsen()">✕</button></div>
-<p class="small">Cari lalu pilih santri yang absennya akan diperbaiki.</p>
+<p class="small">Cari lalu pilih santri yang absennya akan diperbaiki. Admin juga dapat menghapus data absensi cloud untuk tanggal tertentu atau seluruh periode.</p>
+<div style="border:1px solid #f0c6c6;background:#fff8f8;border-radius:12px;padding:12px;margin:10px 0">
+  <b>🧹 Reset Data Absen</b>
+  <p class="small">Reset tanggal tertentu akan menghapus rekap dan riwayat absen pada tanggal itu dari cloud. Reset semua akan menghapus seluruh rekap/riwayat absen dan status absen aktif.</p>
+  <label><b>Pilih tanggal yang akan di-reset</b></label>
+  <input type="date" id="tanggalResetAbsen">
+  <div class="row">
+    <button class="gold" type="button" onclick="resetAbsenHariTertentu()">Reset Absen Hari Ini/Tanggal Terpilih</button>
+    <button class="danger" type="button" onclick="resetSemuaAbsenCloud()">Reset Semua Absen</button>
+  </div>
+</div>
 <input id="cariSantriRevisi" placeholder="Cari nama atau NIS santri..." oninput="tampilPilihanSantriRevisi()">
 <div id="pilihanSantriRevisi" style="max-height:230px;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:8px;margin:8px 0"></div>
 <div id="formDetailRevisi" class="hidden">
