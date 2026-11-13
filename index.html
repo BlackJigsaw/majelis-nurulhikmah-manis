@@ -1371,11 +1371,25 @@ function statusAbsenHariIni(nis){
   return '';
 }
 function pesanWaliByStatus(namaAnak, statusRaw){
-  let n=esc(namaAnak);
-  const jam=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
-  if(jam>=19 || jam<4) return {label:'Pesan Malam',cls:'',pesan:'<b>'+n+'</b>, semoga malam ini Allah menjaga langkahmu, menenangkan hatimu, dan menguatkan niatmu untuk terus dekat dengan Al-Qur’an. Jangan tinggalkan sholat, basahi lisan dengan dzikir dan sholawat, serta istirahatlah dengan baik. Esok adalah kesempatan baru untuk kembali belajar dan menjadi lebih baik. Semoga Allah menjadikanmu anak yang shalih/shalihah, berilmu, dan istiqamah. Aamiin 🤲🌙'};
-  let s=statusRaw||'';
-  if(!s) return {label:'Guru belum Update',cls:'',pesan:'Guru belum Update absen hari ini. Silakan tunggu informasi terbaru dari guru 🙏'};
+  const n=esc(namaAnak);
+  const waktu=new Intl.DateTimeFormat('en-GB',{
+    timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+  }).format(new Date()).split(':');
+  const menitSekarang=(Number(waktu[0])*60)+Number(waktu[1]);
+  const s=statusRaw||'';
+
+  // 19.31 sampai 15.00 WIB: tampilkan pesan pengingat yang ditetapkan.
+  if(menitSekarang>=19*60+31 || menitSekarang<=15*60){
+    return {
+      label:'Pesan Pengingat',cls:'',
+      pesan:n+', hari ini sudah belajar mengaji. pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa '+n+' harus tetap jaga sholat, baca Qur\'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah '+n+', diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan '+n+' beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya '+n
+    };
+  }
+
+  // 15.01 sampai 19.30 WIB: tunggu update absen hari ini.
+  if(!s){
+    return {label:'Belum Ada Update',cls:'',pesan:'Belum Ada Update'};
+  }
   if(s==='Hadir') return {label:'Hadir',cls:'st-Hadir',pesan:'<b>'+n+'</b> sedang belajar mengaji hari ini. Terus dukung dan doakan agar istiqamah dalam menuntut ilmu. Hadiahilah Al-Fatihah untuknya. 🤲'};
   if(s==='Izin') return {label:'Izin',cls:'st-Izin',pesan:'<b>'+n+'</b> izin mengaji hari ini. Semoga urusannya dimudahkan dan dapat kembali belajar mengaji. Terus doakan dan beri dukungan. 🤲'};
   if(s==='Sakit') return {label:'Sakit',cls:'st-Sakit',pesan:'<b>'+n+'</b> sedang sakit. Semoga Allah memberikan kesembuhan, kekuatan, dan kesehatan agar dapat kembali mengaji. Aamiin. 🤲'};
