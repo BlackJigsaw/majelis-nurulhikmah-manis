@@ -532,8 +532,11 @@ th{background:#f7f7f7;font-size:12px}
     setItem(k, v){ v = String(v); if(k==='user_nurulhikmah'||k==='role_nurulhikmah'){ try{ localStorage.setItem(k, v); }catch(e){} _mem[k]=v; return; } _mem[k] = v; fetch(KV_URL + "/set/" + encodeURIComponent(k), { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: v }).catch(()=>{}); },
     removeItem(k){ delete _mem[k]; if(k==='user_nurulhikmah'||k==='role_nurulhikmah'){ try{ localStorage.removeItem(k); }catch(e){} return; } fetch(KV_URL + "/del/" + encodeURIComponent(k), { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN } }).catch(()=>{}); }
   };
-  const memSession = { getItem(k){ return (k in _memSession) ? _memSession[k] : null; }, setItem(k,v){ _memSession[k]=String(v); }, removeItem(k){ delete _memSession[k]; } };
-  async function ambilDariCloud(){ try{ let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }}); let j = await r.json(); let daftar = j.result || []; for(let k of daftar){ if(k==='user_nurulhikmah' || k==='role_nurulhikmah') continue; let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }}); let j2 = await r2.json(); if(j2.result != null) _mem[k] = j2.result; } let _hashBaru = daftar.map(k=>_mem[k]).join('|') + '|' + daftar.join(','); if(daftar.length>0 && memSession.getItem('hashCloud')!==_hashBaru){ memSession.setItem('hashCloud',_hashBaru); location.reload(); } }catch(e){} }
+ // hashCloud BOLEH pakai sessionStorage, karena ini bukan data, hanya penanda anti-reload.
+// Kalau ini pakai memori, halaman akan reload terus.
+const memSession = sessionStorage;
+  async function ambilDariCloud(){ try{ let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }}); let j = await r.json(); let daftar = j.result || []; for(let k of daftar){ if(k==='user_nurulhikmah' || k==='role_nurulhikmah') continue; let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }}); let j2 = await r2.json(); if(j2.result != null) _mem[k] = j2.result; } // Jangan reload lagi. Data cloud sudah masuk ke _mem, tinggal pakai.
+// Reload di sini yang bikin loop.
   ambilDariCloud();
   // AKHIR CLOUD ONLY
 const dataAwal = [
