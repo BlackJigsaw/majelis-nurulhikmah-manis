@@ -1612,7 +1612,7 @@ function shareWA(){
   let idxSama = riwayat.findIndex(r=>r.tglVal===tglVal);
   let dataBaru = {tglVal, hari, tanggal, jam, total:santri.length, hadir:h, sakit:sk, izin:iz, tanpaKet:tk, data: JSON.parse(JSON.stringify(santri))};
   if(idxSama>=0) riwayat[idxSama]=dataBaru; else riwayat.unshift(dataBaru);
-  simpanRiwayat(); tampilRiwayat(); updateRekapSantri(tglVal, santri);
+  localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri));
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
 }
 </script>
