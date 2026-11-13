@@ -521,32 +521,21 @@ th{background:#f7f7f7;font-size:12px}
 </div></div>
 
 <script>
-// TEMPELAN CLOUD AUTO - JANGAN DIHAPUS
+  // CLOUD ONLY - Data ke Upstash. LOGIN (user/role) tetap di localStorage device supaya tidak login ulang.
+  // Alasan: kalau login ikut cloud, login di HP A akan ketukar / menimpa login di HP B.
   const KV_URL = "https://touching-monster-151282.upstash.io";
   const KV_TOKEN = "gQAAAAAAAk7yAAIgcDE1ZWIyYTE4ZTQ2YWM0ZTkyODY1MDU2ZTBjMzljN2RjOA";
-  const _setAsli = localStorage.setItem.bind(localStorage);
-  async function kirimKeCloud(kunci, nilai){
-    if(kunci==='user_nurulhikmah'||kunci==='role_nurulhikmah') return;
-    try{ await fetch(KV_URL + "/set/" + kunci, { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: nilai }); }catch(e){}
-  }
-  localStorage.setItem = function(kunci, nilai){
-    _setAsli(kunci, nilai);
-    kirimKeCloud(kunci, nilai);
+  const _mem = {};
+  const _memSession = {};
+  const cloudStore = {
+    getItem(k){ if(k==='user_nurulhikmah'||k==='role_nurulhikmah'){ try{ return localStorage.getItem(k); }catch(e){ return null; } } return (k in _mem) ? _mem[k] : null; },
+    setItem(k, v){ v = String(v); if(k==='user_nurulhikmah'||k==='role_nurulhikmah'){ try{ localStorage.setItem(k, v); }catch(e){} _mem[k]=v; return; } _mem[k] = v; fetch(KV_URL + "/set/" + encodeURIComponent(k), { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN }, body: v }).catch(()=>{}); },
+    removeItem(k){ delete _mem[k]; if(k==='user_nurulhikmah'||k==='role_nurulhikmah'){ try{ localStorage.removeItem(k); }catch(e){} return; } fetch(KV_URL + "/del/" + encodeURIComponent(k), { method: "POST", headers: { Authorization: "Bearer " + KV_TOKEN } }).catch(()=>{}); }
   };
-  async function ambilDariCloud(){
-    try{
-      let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }});
-      let j = await r.json();
-      let daftar = j.result || [];
-      for(let k of daftar){
-        let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }});
-        let j2 = await r2.json();
-        if(j2.result && k!=='user_nurulhikmah' && k!=='role_nurulhikmah'){ _setAsli(k, j2.result); }
-      }
-      return true;
-    }catch(e){ return false; }
-  }
-  // AKHIR TEMPELAN CLOUD AUTO
+  const memSession = { getItem(k){ return (k in _memSession) ? _memSession[k] : null; }, setItem(k,v){ _memSession[k]=String(v); }, removeItem(k){ delete _memSession[k]; } };
+  async function ambilDariCloud(){ try{ let r = await fetch(KV_URL + "/keys/*", { headers: { Authorization: "Bearer " + KV_TOKEN }}); let j = await r.json(); let daftar = j.result || []; for(let k of daftar){ if(k==='user_nurulhikmah' || k==='role_nurulhikmah') continue; let r2 = await fetch(KV_URL + "/get/" + k, { headers: { Authorization: "Bearer " + KV_TOKEN }}); let j2 = await r2.json(); if(j2.result != null) _mem[k] = j2.result; } let _hashBaru = daftar.map(k=>_mem[k]).join('|') + '|' + daftar.join(','); if(daftar.length>0 && memSession.getItem('hashCloud')!==_hashBaru){ memSession.setItem('hashCloud',_hashBaru); location.reload(); } }catch(e){} }
+  ambilDariCloud();
+  // AKHIR CLOUD ONLY
 const dataAwal = [
 ["Abil","26110001"],["Akang","26110002"],["Albi","26110003"],["Atika","26110004"],["Aurel","26110005"],["Ayra","26110006"],["Azkia","26110007"],["Daffi","26110008"],["Darel","26110009"],["Ega","26110010"],["Eja","26110011"],["Elang","26110012"],["Fikri","26110013"],["Firza","26110014"],["Habibah","26110015"],["Hafiz","26110016"],["Hana","26110017"],["Hani","26110018"],["Hayya","26110019"],["Iki","26110020"],["Iski","26110021"],["Kamila","26110022"],["Khansa","26110023"],["Koko","26110024"],["Lintang","26110025"],["Nabila","26110026"],["Nadia","26110027"],["Nayya","26110028"],["Nayya","26110029"],["Opal","26110030"],["Pasha","26110031"],["Raffa","26110032"],["Rafka","26110033"],["Raisya","26110034"],["Ridwan (dodi)","26110035"],["Ridwan (wancoy)","26110036"],["Salsa","26110037"],["Satya","26110038"],["Yajna","26110039"],["Zehan","26110040"]
 ].map(x=>({nama:x[0], nis:x[1], absen:''}));
