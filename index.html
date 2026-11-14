@@ -761,8 +761,7 @@ function bukaEditStruktur(e){
   if(e) { e.preventDefault(); e.stopPropagation(); }
   if(!(role==='ADMIN' && user==='Hamdan1438')){ alert('Hanya Admin yang bisa edit struktur.'); return; }
   editStrukturDibuka = true;
-  let teks = strukturData.map(s=> s.jabatan+' | '+s.nama.join(' ; ')).join('
-');
+  let teks = strukturData.map(s=> s.jabatan+' | '+s.nama.join(' ; ')).join('\n');
   document.getElementById('editStrukturText').value = teks;
   let p = document.getElementById('popupEditStruktur');
   p.classList.add('show');
@@ -780,8 +779,7 @@ function simpanStruktur(){
   let teks = document.getElementById('editStrukturText').value.trim();
   if(!teks) return alert('Isi struktur dulu.');
   let baru = [];
-  teks.split('
-').forEach(line=>{
+  teks.split('\n').forEach(line=>{
     line=line.trim(); if(!line) return;
     let parts = line.split('|');
     if(parts.length<2) return;
@@ -935,7 +933,7 @@ function tampilAksesKhususPage(){
       </div>
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn-edit-kecil" onclick="bukaEditUserKhusus('${esc(d.nama).replace(/'/g,"\'")}')">✏️ Edit Role</button>
+      <button class="btn-edit-kecil" onclick="bukaEditUserKhusus('${esc(d.nama).replace(/'/g,"\\'")}')">✏️ Edit Role</button>
       <button class="btn-hapus-kecil" onclick="hapusAksesKhusus(${idx})">🗑️ Hapus Akses</button>
     </div>`;
     wrap.appendChild(div);
@@ -1018,7 +1016,7 @@ function hapusPengumuman(){
   if(!pengumuman) return alert('Tidak ada pengumuman.');
   if(!confirm('Hapus pengumuman ini dari semua user?')) return;
   pengumuman=null; localStorage.removeItem('pengumuman_nurulhikmah');
-  tampilPenguman(); alert('Pengumuman dihapus.');
+  tampilPengumuman(); alert('Pengumuman dihapus.');
 }
 function tampilPesanKhusus(){
   const banner=document.getElementById('pesanKhususBanner');
@@ -1154,12 +1152,8 @@ function hapusSatuPengunjung(idx){
   let acc = cariDisetujui(p.nama);
   let pesan = acc
     ? (acc.viaAcc
-        ? 'Hapus '+p.nama+' dari Daftar Pengunjung?
-
-Nama ini masuk lewat ACC Admin, jadi ACC-nya juga akan dicabut dan dia tidak bisa login lagi.'
-        : 'Hapus '+p.nama+' dari Daftar Pengunjung?
-
-Pengaturan role khusus untuk user ini juga akan direset ke bawaan.')
+        ? 'Hapus '+p.nama+' dari Daftar Pengunjung?\n\nNama ini masuk lewat ACC Admin, jadi ACC-nya juga akan dicabut dan dia tidak bisa login lagi.'
+        : 'Hapus '+p.nama+' dari Daftar Pengunjung?\n\nPengaturan role khusus untuk user ini juga akan direset ke bawaan.')
     : 'Hapus '+p.nama+' dari Daftar Pengunjung?';
   if(!confirm(pesan)) return;
   pengunjung.splice(idx,1); simpanPengunjung();
@@ -1255,7 +1249,7 @@ function adaKataSama(input, target){
 function cekTamuOtomatis(nama){
   let low = nama.toLowerCase().trim();
   if(!low.includes('tamu')) return false;
-  let sisa = low.replace(/tamu/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  let sisa = low.replace(/ tamu /g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   if(!sisa) return false;
   let cocokSantri = santri.some(s=> adaKataSama(sisa, s.nama));
   let cocokWali = waliList.some(w=> adaKataSama(sisa, w.namaWali||''));
@@ -1348,7 +1342,7 @@ function bukaPopupPilihWaliTunggal(namaInput, grupList){
   const info = document.getElementById('infoPilihWaliTunggal');
   const wrap = document.getElementById('listPilihanWaliTunggal');
   if(info){
-    info.innerHTML = 'Ditemukan <b>' + grupList.length + '</b> data wali dengan nama <b>"' + esc(namaInput) + '"</b>. Silakan pilih sesuai data anak Anda (pilihan ini tersimpan lokal di perangkat ini saja):';
+    info.innerHTML = 'Ditemukan <b>' + grupList.length + '</b> data wali dengan nama <b>\"' + esc(namaInput) + '\"</b>. Silakan pilih sesuai data anak Anda (pilihan ini tersimpan lokal di perangkat ini saja):';
   }
   wrap.innerHTML = '';
   grupList.forEach((g, idx) => {
@@ -1663,15 +1657,15 @@ function pesanMalamByStatus(namaSantri, nis, status){
   const w = cariWaliByNIS(nis);
   const namaWali = (w && w.namaWali) ? esc(w.namaWali) : 'Orang Tuanya';
   if(status==='Hadir'){
-    return n+', pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa '+n+' harus tetap jaga sholat, baca Qur'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah '+n+', diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan '+n+' beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya '+n;
+    return n+", pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa "+n+" harus tetap jaga sholat, baca Qur'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah "+n+", diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan "+n+" beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya "+n;
   }
   if(status==='Izin'){
-    return n+', jika urusannya sudah selesai, ngaji lagi ya. jangan lupa sholat, baca qur'an juga sholawat, dan sedekahnya di jaga ya.';
+    return n+", jika urusannya sudah selesai, ngaji lagi ya. jangan lupa sholat, baca qur'an juga sholawat, dan sedekahnya di jaga ya.";
   }
   if(status==='Sakit'){
-    return n+', cepet sembuh ya. semoga Allah nguatin '+n+' , disabarin dan diobatin sama Allah agar cepet sembuh tapi hikmahnya masih dapat. berdoa bareng yu, <span class="doa-highlight">Nawaitu Li Tholabisy-Syifa Wa Daf'il Bala Li '+n+' bin '+namaWali+' bi barokatil Musthofa AlFatihah ...</span>';
+    return n+", cepet sembuh ya. semoga Allah nguatin "+n+" , disabarin dan diobatin sama Allah agar cepet sembuh tapi hikmahnya masih dapat. berdoa bareng yu, <span class="doa-highlight">Nawaitu Li Tholabisy-Syifa Wa Daf'il Bala Li "+n+" bin "+namaWali+" bi barokatil Musthofa AlFatihah ...</span>";
   }
-  return n+' jangan jauh dari Allah dan Rosul Nya yaaa. tetep harus jaga sholat, baca qur'an juga sholawat dan sedekahnya. Semoga Allah perpanjang kontrak hidayah '+n+' dan kembali dipilih jadi Pelestari Ilmu Agama Islam yang Allah muliakan.';
+  return n+" jangan jauh dari Allah dan Rosul Nya yaaa. tetep harus jaga sholat, baca qur'an juga sholawat dan sedekahnya. Semoga Allah perpanjang kontrak hidayah "+n+" dan kembali dipilih jadi Pelestari Ilmu Agama Islam yang Allah muliakan.";
 }
 
 function getKontenKartuInformasi(s){
@@ -1972,15 +1966,9 @@ function hapusSatuRiwayat(i){ if(!isAdmin()) return alert('Hanya Admin'); if(con
 function hapusSemuaRiwayat(){ if(!isAdmin()) return; if(confirm('Hapus semua riwayat absen?')){ riwayat=[]; simpanRiwayat(); tampilRiwayat(); } }
 function shareUlang(){
   if(riwayatTerbuka<0) return; let r = riwayat[riwayatTerbuka];
-  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*
-Dusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.
-${r.hari}, ${r.tanggal}
-
-`;
-  r.data.forEach((s,i)=>{ teks += `${i+1}. ${s.nama} (${s.nis}) = ${s.absen||'Tanpa Keterangan'}
-`; });
-  teks += `
-Total: ${r.total} | Hadir: ${r.hadir} | Sakit: ${r.sakit} | Izin: ${r.izin} | Tanpa Keterangan: ${r.tanpaKet}`;
+  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*\nDusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.\n${r.hari}, ${r.tanggal}\n\n`;
+  r.data.forEach((s,i)=>{ teks += `${i+1}. ${s.nama} (${s.nis}) = ${s.absen||'Tanpa Keterangan'}\n`; });
+  teks += `\nTotal: ${r.total} | Hadir: ${r.hadir} | Sakit: ${r.sakit} | Izin: ${r.izin} | Tanpa Keterangan: ${r.tanpaKet}`;
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
 }
 function updateRekapSantri(tglVal, santriSaatIni){
@@ -2145,16 +2133,10 @@ async function shareWA(){
   let d = tglVal ? new Date(tglVal) : new Date();
   let hari = d.toLocaleDateString('id-ID',{weekday:'long'});
   let tanggal = d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
-  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*
-Dusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.
-${hari}, ${tanggal}
-
-`;
-  santri.forEach((s,i)=>{ let status = s.absen || 'Tanpa Keterangan'; teks += `${i+1}. ${s.nama} (${s.nis}) = ${status}
-`; });
+  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*\nDusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.\n${hari}, ${tanggal}\n\n`;
+  santri.forEach((s,i)=>{ let status = s.absen || 'Tanpa Keterangan'; teks += `${i+1}. ${s.nama} (${s.nis}) = ${status}\n`; });
   let h = santri.filter(x=>x.absen==='Hadir').length; let sk = santri.filter(x=>x.absen==='Sakit').length; let iz = santri.filter(x=>x.absen==='Izin').length; let tk = santri.filter(x=>!x.absen||x.absen==='Tanpa Keterangan').length;
-  teks += `
-Total: ${santri.length} | Hadir: ${h} | Sakit: ${sk} | Izin: ${iz} | Tanpa Keterangan: ${tk}`;
+  teks += `\nTotal: ${santri.length} | Hadir: ${h} | Sakit: ${sk} | Izin: ${iz} | Tanpa Keterangan: ${tk}`;
   let jam = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   let idxSama = riwayat.findIndex(r=>r.tglVal===tglVal);
   let dataBaru = {tglVal, hari, tanggal, jam, total:santri.length, hadir:h, sakit:sk, izin:iz, tanpaKet:tk, data: JSON.parse(JSON.stringify(santri))};
