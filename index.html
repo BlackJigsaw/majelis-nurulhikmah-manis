@@ -1458,7 +1458,6 @@ function adaKataSama(input, target){
   return a.some(k=> b.includes(k));
 }
 function isNamaPengurus(text){
-  if(String(text||'').includes('/')) return false;
   let kataInput = pecahKata(text);
   return kataInput.some(w=> PENGURUS_NAMES.some(p=> w===p || (p.length>=4 && w.startsWith(p))));
 }
@@ -1473,19 +1472,29 @@ function cekTamuOtomatis(nama){
 }
 
 function cariAnakWali(namaLogin){
+  let nisSet = new Set();
   let acc = cariDisetujui(namaLogin);
   if(acc && (acc.role==='WALI' || acc.role==='PENGURUS') && Array.isArray(acc.anakNis) && acc.anakNis.length){
-    let nisOverride = new Set(acc.anakNis);
-    return santri.filter(s=>nisOverride.has(s.nis));
+    acc.anakNis.forEach(n => nisSet.add(n));
   }
   const inputPair = pecahPasanganWali(namaLogin);
-  if(!inputPair) return [];
-  const ketemuWali = waliList.filter(w => {
-    const dbPair = pecahPasanganWali(w.namaWali);
-    return cocokPasanganNama(inputPair, dbPair);
-  });
-  if(!ketemuWali.length) return [];
-  const nisSet = new Set(ketemuWali.map(w => w.nis));
+  if(inputPair){
+    waliList.forEach(w => {
+      const dbPair = pecahPasanganWali(w.namaWali);
+      if(cocokPasanganNama(inputPair, dbPair)){
+        nisSet.add(w.nis);
+      } else if(isNamaPengurus(namaLogin) && adaKataSama(namaLogin, w.namaWali||'')){
+        nisSet.add(w.nis);
+      }
+    });
+  } else if(isNamaPengurus(namaLogin)){
+    waliList.forEach(w => {
+      if(adaKataSama(namaLogin, w.namaWali||'')){
+        nisSet.add(w.nis);
+      }
+    });
+  }
+  if(!nisSet.size) return [];
   return santri.filter(s => nisSet.has(s.nis));
 }
 
@@ -1506,6 +1515,7 @@ function tentukanRole(nama){
   let acc = cariDisetujui(nama);
   if(acc) return acc.role;
   if(Object.prototype.hasOwnProperty.call(GURU_CODES, nama)) return 'GURU';
+  if(isNamaPengurus(nama)) return 'PENGURUS';
   if(String(nama||'').includes('/')){
     let anakWali = cariAnakWali(nama);
     if(anakWali.length > 0){
@@ -1514,7 +1524,6 @@ function tentukanRole(nama){
     }
     return 'TAMU_DITOLAK';
   }
-  if(isNamaPengurus(nama)) return 'PENGURUS';
   let s = cariSantriByLogin(nama);
   if(s){
     santriAktif = s;
