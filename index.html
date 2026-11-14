@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MAJELIS TA'LIM NURUL HIKMAH</title>
 <script>
-// PRE-FETCH CEPAT CLOUD UPSTASH KV (INSTANT CACHE + BACKGROUND SYNC + TIMEOUT)
+// PRE-FETCH CEPAT CLOUD UPSTASH KV (BATCH MGET SEBELUM RENDER)
 const KV_URL = "https://touching-monster-151282.upstash.io";
 const KV_TOKEN = "gQAAAAAAAk7yAAIgcDE1ZWIyYTE4ZTQ2YWM0ZTkyODY1MDU2ZTBjMzljN2RjOA";
 const CLOUD_DATA_KEYS = [
@@ -18,8 +18,7 @@ const CLOUD_DATA_KEYS = [
 const CLOUD_DATA_SET = new Set(CLOUD_DATA_KEYS);
 const _setAsli = localStorage.setItem.bind(localStorage);
 const _removeAsli = localStorage.removeItem.bind(localStorage);
-let cloudReady = true;
-let cloudSyncing = false;
+let cloudReady = false;
 let cloudApplying = false;
 let cloudQueue = Promise.resolve();
 const cloudPending = new Map();
@@ -27,63 +26,46 @@ const cloudSeen = new Map();
 
 function cloudHeaders(){ return {Authorization:'Bearer '+KV_TOKEN}; }
 
-async function cloudBatchMget(timeoutMs = 2500){
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const path = CLOUD_DATA_KEYS.map(k => encodeURIComponent(k)).join('/');
-    const r = await fetch(KV_URL + '/mget/' + path, {
-      method: 'GET',
-      headers: cloudHeaders(),
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    if(!r.ok) throw new Error('Cloud MGET gagal: ' + r.status);
-    const j = await r.json();
-    const arr = Array.isArray(j.result) ? j.result : [];
-    const hasil = {};
-    CLOUD_DATA_KEYS.forEach((k, idx) => {
-      if(arr[idx] !== null && arr[idx] !== undefined){
-        hasil[k] = String(arr[idx]);
-      }
-    });
-    return hasil;
-  } finally {
-    clearTimeout(timer);
-  }
+async function cloudBatchMget(){
+  const path = CLOUD_DATA_KEYS.map(k => encodeURIComponent(k)).join('/');
+  const r = await fetch(KV_URL + '/mget/' + path, {
+    method: 'GET',
+    headers: cloudHeaders(),
+    cache: 'no-store'
+  });
+  if(!r.ok) throw new Error('Cloud MGET gagal: ' + r.status);
+  const j = await r.json();
+  const arr = Array.isArray(j.result) ? j.result : [];
+  const hasil = {};
+  CLOUD_DATA_KEYS.forEach((k, idx) => {
+    if(arr[idx] !== null && arr[idx] !== undefined){
+      hasil[k] = String(arr[idx]);
+    }
+  });
+  return hasil;
 }
 
 window.__cloudInitPromise = (async () => {
-  cloudSyncing = true;
   try {
-    const data = await cloudBatchMget(2500);
-    let adaPerubahan = false;
+    const data = await cloudBatchMget();
     cloudApplying = true;
     Object.entries(data).forEach(([k, v]) => {
-      if(cloudPending.has(k)) return;
       if(localStorage.getItem(k) !== v){
         _setAsli(k, v);
-        adaPerubahan = true;
       }
       cloudSeen.set(k, v);
     });
     cloudApplying = false;
     cloudReady = true;
-    cloudSyncing = false;
-    if(adaPerubahan && typeof refreshTampilanSetelahCloud === 'function'){
-      refreshTampilanSetelahCloud();
-    }
     return true;
   } catch (e) {
     cloudApplying = false;
     cloudReady = true;
-    cloudSyncing = false;
-    console.warn('Prefetch cloud timeout/offline, menggunakan cache lokal:', e);
+    console.warn('Prefetch cloud gagal, menggunakan cache lokal:', e);
     return false;
   }
 })();
 </script>
-<link rel="preconnect" href="https://touching-monster-151282.upstash.io" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@600;700;800;900&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
@@ -213,8 +195,8 @@ th{background:#f7f7f7;font-size:12px}
 <label><b>Masukan Nama Lengkap</b></label>
 <input id="namaLogin" placeholder="Masukan Nama Lengkap" onkeydown="if(event.key==='Enter') login()">
 <div class="login-hint">Jika anda wali santri, maka masukan nama dengan format ( nama suami/nama istri ) atau sebaliknya agar tidak terjadi kesalahan informasi santri yang akan di tampilkan di halaman beranda anda</div>
-<button id="btnLogin" onclick="login()">MASUK</button>
-<p class="small center" id="infoLogin"></p>
+<button id="btnLogin" onclick="login()" disabled>Memuat Database...</button>
+<p class="small center" id="infoLogin">Menyinkronkan database terbaru dari cloud...</p>
 <p class="small center">Jika terdapat masalah dalam masuk homepage, hubungi <a class="link-amang" onclick="hubungiAmang()">Amang Badèn</a></p>
 </div>
 </div>
@@ -1425,7 +1407,7 @@ function hapusPengunjung(){
   if(document.getElementById('aksesKhususPage').classList.contains('show')) tampilAksesKhususPage();
 }
 
-// ===== LOGIKA ROLE & PENCOCOKAN PASANGAN NAMA WALI (NAMA1 / NAMA2 & TUNGGAL) =====
+// ===== LOGIKA ROLE & PENCOCOKAN PASANGAN NAMA WALI (NAMA1 / NAMA2) =====
 const GURU_CODES = {
   'GilangSaputra1919': 'Gilang',
   'ArilMaulana1917': 'Aril',
@@ -1434,33 +1416,6 @@ const GURU_CODES = {
 };
 const PENGURUS_NAMES = ['jalil','fadhli','enco','sri','enci','erna','ijoh'];
 const GELAR_WALI = ['bu','ibu','bapak','pak','bpk','mama','abah','mami','papi','umi','abi','teh','teteh','aa','mang','amang','kang'];
-const LOCAL_PILIHAN_WALI_KEY = 'pilihan_wali_lokal_nurulhikmah';
-let kandidatWaliPopup = [];
-let namaLoginPendingWali = '';
-
-function getPilihanWaliLokal(){
-  try {
-    return JSON.parse(localStorage.getItem(LOCAL_PILIHAN_WALI_KEY) || '{}');
-  } catch(e) {
-    return {};
-  }
-}
-
-function setPilihanWaliLokal(namaInput, nisList){
-  const key = String(namaInput || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const map = getPilihanWaliLokal();
-  map[key] = Array.isArray(nisList) ? nisList : [];
-  _setAsli(LOCAL_PILIHAN_WALI_KEY, JSON.stringify(map));
-}
-
-function hapusPilihanWaliLokal(namaInput){
-  const key = String(namaInput || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const map = getPilihanWaliLokal();
-  if(Object.prototype.hasOwnProperty.call(map, key)){
-    delete map[key];
-    _setAsli(LOCAL_PILIHAN_WALI_KEY, JSON.stringify(map));
-  }
-}
 
 function bersihkanNamaWaliTunggal(str){
   return String(str||'')
@@ -1483,7 +1438,10 @@ function cocokPasanganNama(inputPair, dbPair){
   if(!inputPair || !dbPair || inputPair.length !== 2 || dbPair.length !== 2) return false;
   const cocokSatu = (a, b) => {
     if(!a || !b) return false;
-    return a === b;
+    if(a === b) return true;
+    const kataA = a.split(' ');
+    const kataB = b.split(' ');
+    return kataA.every(k => kataB.includes(k)) || kataB.every(k => kataA.includes(k));
   };
   const urutanSama = cocokSatu(inputPair[0], dbPair[0]) && cocokSatu(inputPair[1], dbPair[1]);
   const urutanTerbalik = cocokSatu(inputPair[0], dbPair[1]) && cocokSatu(inputPair[1], dbPair[0]);
@@ -1514,126 +1472,21 @@ function cekTamuOtomatis(nama){
   return cocokSantri || cocokWali;
 }
 
-function cariGrupWaliByNamaTunggal(namaLogin){
-  const inputBersih = bersihkanNamaWaliTunggal(namaLogin);
-  if(!inputBersih || String(namaLogin||'').includes('/')) return [];
-  const grupMap = new Map();
-
-  waliList.forEach(w => {
-    const rawWali = String(w.namaWali || '').trim();
-    if(!rawWali) return;
-    let cocok = false;
-    if(rawWali.includes('/')){
-      const parts = pecahPasanganWali(rawWali);
-      if(parts && (parts[0] === inputBersih || parts[1] === inputBersih)){
-        cocok = true;
-      }
-    } else {
-      const dbBersih = bersihkanNamaWaliTunggal(rawWali);
-      if(dbBersih && dbBersih === inputBersih){
-        cocok = true;
-      }
-    }
-    if(cocok){
-      const kunciGrup = rawWali.toLowerCase().replace(/\s+/g, ' ');
-      if(!grupMap.has(kunciGrup)){
-        grupMap.set(kunciGrup, {
-          namaWaliAsli: rawWali,
-          alamat: w.alamat || '',
-          nomor: w.nomor || '',
-          anakList: []
-        });
-      }
-      const grp = grupMap.get(kunciGrup);
-      const sObj = santri.find(s => s.nis === w.nis);
-      if(sObj && !grp.anakList.some(a => a.nis === sObj.nis)){
-        grp.anakList.push(sObj);
-      }
-      if(!grp.alamat && w.alamat) grp.alamat = w.alamat;
-      if(!grp.nomor && w.nomor) grp.nomor = w.nomor;
-    }
-  });
-
-  return Array.from(grupMap.values()).filter(g => g.anakList.length > 0);
-}
-
 function cariAnakWali(namaLogin){
   let acc = cariDisetujui(namaLogin);
   if(acc && (acc.role==='WALI' || acc.role==='PENGURUS') && Array.isArray(acc.anakNis) && acc.anakNis.length){
     let nisOverride = new Set(acc.anakNis);
     return santri.filter(s=>nisOverride.has(s.nis));
   }
-
-  // Jika format pasangan nama1/nama2: tampilkan hanya santri dengan pasangan wali yang spesifik sama (termasuk urutan terbalik)
-  if(String(namaLogin||'').includes('/')){
-    const inputPair = pecahPasanganWali(namaLogin);
-    if(!inputPair) return [];
-    const ketemuWali = waliList.filter(w => {
-      const dbPair = pecahPasanganWali(w.namaWali);
-      return cocokPasanganNama(inputPair, dbPair);
-    });
-    if(!ketemuWali.length) return [];
-    const nisSet = new Set(ketemuWali.map(w => w.nis));
-    return santri.filter(s => nisSet.has(s.nis));
-  }
-
-  // Jika nama tunggal: cek pilihan lokal perangkat terlebih dahulu
-  const keyLokal = String(namaLogin || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const pilihanMap = getPilihanWaliLokal();
-  if(Array.isArray(pilihanMap[keyLokal]) && pilihanMap[keyLokal].length > 0){
-    const nisPilihan = new Set(pilihanMap[keyLokal]);
-    const anakTerpilih = santri.filter(s => nisPilihan.has(s.nis));
-    if(anakTerpilih.length > 0) return anakTerpilih;
-  }
-
-  // Jika tidak ada pilihan lokal, cek apakah di daftar wali hanya ada 1 entitas wali yang cocok
-  const grupWali = cariGrupWaliByNamaTunggal(namaLogin);
-  if(grupWali.length === 1){
-    return grupWali[0].anakList;
-  }
-  return [];
-}
-
-function bukaPopupPilihWaliTunggal(namaInput, grupList){
-  kandidatWaliPopup = grupList;
-  namaLoginPendingWali = namaInput;
-  const info = document.getElementById('infoPilihWaliTunggal');
-  const wrap = document.getElementById('listPilihanWaliTunggal');
-  if(info){
-    info.innerHTML = 'Ditemukan <b>' + grupList.length + '</b> data wali dengan nama <b>"' + esc(namaInput) + '"</b>. Silakan pilih sesuai data anak Anda (tersimpan lokal di perangkat ini):';
-  }
-  wrap.innerHTML = '';
-  grupList.forEach((g, idx) => {
-    const namaAnakStr = g.anakList.map(a => esc(a.nama) + ' (NIS: ' + esc(a.nis) + ')').join(', ');
-    const alamatStr = g.alamat ? esc(g.alamat) : '-';
-    const div = document.createElement('div');
-    div.className = 'user-aktif';
-    div.style.cursor = 'pointer';
-    div.style.borderColor = '#0b6e4f';
-    div.innerHTML = `<b style="color:#0b6e4f;font-size:15px">👤 Wali: ${esc(g.namaWaliAsli)}</b><br>
-      <span class="small"><b>👶 Santri:</b> ${namaAnakStr}</span><br>
-      <span class="small"><b>📍 Alamat:</b> ${alamatStr}</span>
-      <button type="button" style="margin-top:8px;padding:8px;font-size:13px" onclick="pilihKandidatWaliTunggal(${idx})">Pilih Data Ini</button>`;
-    wrap.appendChild(div);
+  const inputPair = pecahPasanganWali(namaLogin);
+  if(!inputPair) return [];
+  const ketemuWali = waliList.filter(w => {
+    const dbPair = pecahPasanganWali(w.namaWali);
+    return cocokPasanganNama(inputPair, dbPair);
   });
-  document.getElementById('popupPilihWaliTunggal').classList.add('show');
-}
-
-function tutupPopupPilihWaliTunggal(){
-  document.getElementById('popupPilihWaliTunggal').classList.remove('show');
-  kandidatWaliPopup = [];
-  namaLoginPendingWali = '';
-}
-
-function pilihKandidatWaliTunggal(idx){
-  const terpilih = kandidatWaliPopup[idx];
-  const namaInput = namaLoginPendingWali;
-  if(!terpilih || !namaInput) return;
-  const nisTerpilih = terpilih.anakList.map(a => a.nis);
-  setPilihanWaliLokal(namaInput, nisTerpilih);
-  waliAnak = terpilih.anakList;
-  tutupPopupPilihWaliTunggal();
-  selesaikanLogin(namaInput, 'WALI');
+  if(!ketemuWali.length) return [];
+  const nisSet = new Set(ketemuWali.map(w => w.nis));
+  return santri.filter(s => nisSet.has(s.nis));
 }
 
 function cariSantriByLogin(namaLogin){
@@ -1653,8 +1506,6 @@ function tentukanRole(nama){
   let acc = cariDisetujui(nama);
   if(acc) return acc.role;
   if(Object.prototype.hasOwnProperty.call(GURU_CODES, nama)) return 'GURU';
-
-  // Format pasangan nama1/nama2 -> spesifik untuk WALI
   if(String(nama||'').includes('/')){
     let anakWali = cariAnakWali(nama);
     if(anakWali.length > 0){
@@ -1663,30 +1514,7 @@ function tentukanRole(nama){
     }
     return 'TAMU_DITOLAK';
   }
-
-  // Format nama tunggal: menangkan PENGURUS jika terdaftar sebagai pengurus
   if(isNamaPengurus(nama)) return 'PENGURUS';
-
-  // Cek apakah nama tunggal terdaftar di daftar wali
-  const grupWaliTunggal = cariGrupWaliByNamaTunggal(nama);
-  if(grupWaliTunggal.length === 1){
-    waliAnak = grupWaliTunggal[0].anakList;
-    return 'WALI';
-  }
-  if(grupWaliTunggal.length > 1){
-    const keyLokal = String(nama || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    const pilihanMap = getPilihanWaliLokal();
-    if(Array.isArray(pilihanMap[keyLokal]) && pilihanMap[keyLokal].length > 0){
-      const nisPilihan = new Set(pilihanMap[keyLokal]);
-      const anakTerpilih = santri.filter(s => nisPilihan.has(s.nis));
-      if(anakTerpilih.length > 0){
-        waliAnak = anakTerpilih;
-        return 'WALI';
-      }
-    }
-    return 'WALI_PILIH_POPUP';
-  }
-
   let s = cariSantriByLogin(nama);
   if(s){
     santriAktif = s;
@@ -1722,10 +1550,6 @@ function pulihkanSesiLogin(){
   let roleBaru=tentukanRole(namaTersimpan);
   if(roleBaru==='TAMU_DITOLAK'){
     localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');user='';role='';
-  }else if(roleBaru==='WALI_PILIH_POPUP'){
-    localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');user='';role='';
-    const grup = cariGrupWaliByNamaTunggal(namaTersimpan);
-    if(grup.length > 1) bukaPopupPilihWaliTunggal(namaTersimpan, grup);
   }else if(roleBaru==='WALI'){
     role='WALI';
     waliAnak=cariAnakWali(namaTersimpan);
@@ -1739,43 +1563,15 @@ function pulihkanSesiLogin(){
 }
 
 async function login(){
-  const infoEl = document.getElementById('infoLogin');
-  const btnEl = document.getElementById('btnLogin');
-  let nama = document.getElementById('namaLogin').value.trim();
-  if(!nama){ infoEl.innerText = 'Isi nama dulu.'; return; }
-
-  // Jika ini perangkat baru yang belum pernah menyimpan cache cloud sama sekali dan cloud masih berjalan, tunggu sebentar (maks 2.5 dtk)
-  const belumAdaCacheCloud = !localStorage.getItem('wali_nurulhikmah') && !localStorage.getItem('disetujui_nurulhikmah');
-  if(belumAdaCacheCloud && cloudSyncing && window.__cloudInitPromise){
-    if(btnEl){ btnEl.disabled = true; btnEl.innerText = 'Menyiapkan...'; }
-    infoEl.innerText = 'Menyiapkan data pertama kali...';
+  if(!cloudReady && window.__cloudInitPromise){
+    document.getElementById('infoLogin').innerText = 'Menunggu database selesai dimuat...';
     await window.__cloudInitPromise;
     muatStateDariLocal();
-    if(btnEl){ btnEl.disabled = false; btnEl.innerText = 'MASUK'; }
-    infoEl.innerText = '';
-  } else {
-    muatStateDariLocal();
   }
-
+  let nama=document.getElementById('namaLogin').value.trim();
+  if(!nama){document.getElementById('infoLogin').innerText='Isi nama dulu.';return;}
   user=nama;waliAnak=[];santriAktif=null;
   role=tentukanRole(nama);
-
-  // Jika tidak ketemu di cache lokal tapi sinkronisasi cloud awal masih berjalan, tunggu hasil cloud sebelum menolak
-  if(role==='TAMU_DITOLAK' && cloudSyncing && window.__cloudInitPromise){
-    if(btnEl){ btnEl.disabled = true; btnEl.innerText = 'Memeriksa...'; }
-    infoEl.innerText = 'Memeriksa data terbaru...';
-    await window.__cloudInitPromise;
-    muatStateDariLocal();
-    if(btnEl){ btnEl.disabled = false; btnEl.innerText = 'MASUK'; }
-    infoEl.innerText = '';
-    role = tentukanRole(nama);
-  }
-
-  if(role==='WALI_PILIH_POPUP'){
-    const grup = cariGrupWaliByNamaTunggal(nama);
-    bukaPopupPilihWaliTunggal(nama, grup);
-    return;
-  }
   if(role==='TAMU_DITOLAK'){
     if(!permintaanAkses.some(p=>p.nama.toLowerCase()===nama.toLowerCase())&&!cariDisetujui(nama)){
       permintaanAkses.push({nama:nama,waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});simpanPermintaan();
@@ -1785,27 +1581,21 @@ async function login(){
   selesaikanLogin(nama,role);
 }
 
-// INISIALISASI INSTAN DARI CACHE LOKAL, LALU SINKRONISASI CLOUD DI LATAR BELAKANG
-(function initAppInstan(){
+// INISIALISASI SAAT CLOUD PRE-FETCH SELESAI
+(async function initAppSetelahCloud(){
+  if(window.__cloudInitPromise){
+    await window.__cloudInitPromise;
+  }
   muatStateDariLocal();
   if(!localStorage.getItem('santri_nurulhikmah')){
     santri = dataAwal;
-    _setAsli('santri_nurulhikmah', JSON.stringify(santri));
+    localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri));
   }
   const btn = document.getElementById('btnLogin');
   const info = document.getElementById('infoLogin');
   if(btn){ btn.disabled = false; btn.innerText = 'MASUK'; }
   if(info){ info.innerText = ''; }
   pulihkanSesiLogin();
-
-  if(window.__cloudInitPromise){
-    window.__cloudInitPromise.then(() => {
-      muatStateDariLocal();
-      if(user && role){
-        refreshTampilanSetelahCloud();
-      }
-    });
-  }
 })();
 
 function showHome(){
@@ -1886,7 +1676,7 @@ function showHome(){
   if(isGuru()){ document.getElementById('guruInfo').classList.remove('hidden'); document.getElementById('thAksi').style.display='none'; }
   tampilSantri(); tampilRiwayat();
 }
-function logout(){ if(user) hapusPilihanWaliLokal(user); localStorage.removeItem('user_nurulhikmah'); localStorage.removeItem('role_nurulhikmah'); location.reload(); }
+function logout(){ localStorage.removeItem('user_nurulhikmah'); localStorage.removeItem('role_nurulhikmah'); location.reload(); }
 
 // ===== LOGIKA WAKTU & PESAN KARTU INFORMASI (00:00-14:59, 15:00-UPDATE, 19:00-14:59) =====
 function getWaktuWIBParts(){
@@ -2300,18 +2090,7 @@ function backupData(){
     </thead>
     <tbody>${rows}</tbody>
   </table>
-  <div id="popupPilihWaliTunggal" class="modal" onclick="if(event.target===this) tutupPopupPilihWaliTunggal()">
-<div class="modal-box">
-<div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
-  <h3>👤 Pilih Akun Wali Santri</h3>
-  <button class="del" style="font-size:20px" onclick="tutupPopupPilihWaliTunggal()">✕</button>
-</div>
-<p class="small" id="infoPilihWaliTunggal">Ditemukan beberapa data wali dengan nama yang sama. Pilih salah satu sesuai data anak Anda (pilihan ini hanya disimpan di perangkat ini):</p>
-<div id="listPilihanWaliTunggal" style="max-height:300px;overflow:auto;margin-top:10px"></div>
-<button class="secondary" onclick="tutupPopupPilihWaliTunggal()">Batal</button>
-</div>
-</div>
-</body></html>`);
+  </body></html>`);
   w.document.close();
   setTimeout(() => w.print(), 400);
 }
@@ -2320,18 +2099,7 @@ function exportPDF(){
  let tgl=document.getElementById('tglAbsen')?document.getElementById('tglAbsen').value:'';
  let w=window.open('','_blank');
  let rows=santri.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.nama)+'</td><td>'+esc(x.nis)+'</td><td>'+(x.absen||'Tanpa Keterangan')+'</td></tr>').join('');
- w.document.write('<html><head><title>Absensi PDF</title><style>body{font-family:Arial;padding:20px}h2,h3{text-align:center;margin:4px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:8px}th{background:#0b6e4f;color:#fff}</style></head><body><h2>MAJELIS TALIM NURUL HIKMAH</h2><h3>Daftar Absensi - '+tgl+'</h3><table><tr><th>No</th><th>Nama</th><th>NIS</th><th>Kehadiran</th></tr>'+rows+'</table><p>Total: '+santri.length+' Santri</p><div id="popupPilihWaliTunggal" class="modal" onclick="if(event.target===this) tutupPopupPilihWaliTunggal()">
-<div class="modal-box">
-<div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
-  <h3>👤 Pilih Akun Wali Santri</h3>
-  <button class="del" style="font-size:20px" onclick="tutupPopupPilihWaliTunggal()">✕</button>
-</div>
-<p class="small" id="infoPilihWaliTunggal">Ditemukan beberapa data wali dengan nama yang sama. Pilih salah satu sesuai data anak Anda (pilihan ini hanya disimpan di perangkat ini):</p>
-<div id="listPilihanWaliTunggal" style="max-height:300px;overflow:auto;margin-top:10px"></div>
-<button class="secondary" onclick="tutupPopupPilihWaliTunggal()">Batal</button>
-</div>
-</div>
-</body></html>');
+ w.document.write('<html><head><title>Absensi PDF</title><style>body{font-family:Arial;padding:20px}h2,h3{text-align:center;margin:4px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:8px}th{background:#0b6e4f;color:#fff}</style></head><body><h2>MAJELIS TALIM NURUL HIKMAH</h2><h3>Daftar Absensi - '+tgl+'</h3><table><tr><th>No</th><th>Nama</th><th>NIS</th><th>Kehadiran</th></tr>'+rows+'</table><p>Total: '+santri.length+' Santri</p></body></html>');
  w.document.close();setTimeout(()=>w.print(),400);
 }
 function lihatDetailSantri(i){
@@ -2585,16 +2353,5 @@ async function shareWA(){
 <div class="row"><button onclick="simpanRevisiAbsen()">Revisi</button><button class="secondary" onclick="tutupPopupRevisiAbsen()">Kembali</button></div>
 </div>
 </div></div>
-<div id="popupPilihWaliTunggal" class="modal" onclick="if(event.target===this) tutupPopupPilihWaliTunggal()">
-<div class="modal-box">
-<div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
-  <h3>👤 Pilih Akun Wali Santri</h3>
-  <button class="del" style="font-size:20px" onclick="tutupPopupPilihWaliTunggal()">✕</button>
-</div>
-<p class="small" id="infoPilihWaliTunggal">Ditemukan beberapa data wali dengan nama yang sama. Pilih salah satu sesuai data anak Anda (pilihan ini hanya disimpan di perangkat ini):</p>
-<div id="listPilihanWaliTunggal" style="max-height:300px;overflow:auto;margin-top:10px"></div>
-<button class="secondary" onclick="tutupPopupPilihWaliTunggal()">Batal</button>
-</div>
-</div>
 </body>
 </html>
