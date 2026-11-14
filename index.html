@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MAJELIS TA'LIM NURUL HIKMAH</title>
 <script>
-// PRE-FETCH CEPAT CLOUD UPSTASH KV (BATCH MGET SEBELUM RENDER)
+// PRE-FETCH CEPAT CLOUD UPSTASH KV (INSTANT CACHE + BACKGROUND SYNC + TIMEOUT)
 const KV_URL = "https://touching-monster-151282.upstash.io";
 const KV_TOKEN = "gQAAAAAAAk7yAAIgcDE1ZWIyYTE4ZTQ2YWM0ZTkyODY1MDU2ZTBjMzljN2RjOA";
 const CLOUD_DATA_KEYS = [
@@ -18,7 +18,8 @@ const CLOUD_DATA_KEYS = [
 const CLOUD_DATA_SET = new Set(CLOUD_DATA_KEYS);
 const _setAsli = localStorage.setItem.bind(localStorage);
 const _removeAsli = localStorage.removeItem.bind(localStorage);
-let cloudReady = false;
+let cloudReady = true;
+let cloudSyncing = false;
 let cloudApplying = false;
 let cloudQueue = Promise.resolve();
 const cloudPending = new Map();
@@ -26,46 +27,63 @@ const cloudSeen = new Map();
 
 function cloudHeaders(){ return {Authorization:'Bearer '+KV_TOKEN}; }
 
-async function cloudBatchMget(){
-  const path = CLOUD_DATA_KEYS.map(k => encodeURIComponent(k)).join('/');
-  const r = await fetch(KV_URL + '/mget/' + path, {
-    method: 'GET',
-    headers: cloudHeaders(),
-    cache: 'no-store'
-  });
-  if(!r.ok) throw new Error('Cloud MGET gagal: ' + r.status);
-  const j = await r.json();
-  const arr = Array.isArray(j.result) ? j.result : [];
-  const hasil = {};
-  CLOUD_DATA_KEYS.forEach((k, idx) => {
-    if(arr[idx] !== null && arr[idx] !== undefined){
-      hasil[k] = String(arr[idx]);
-    }
-  });
-  return hasil;
+async function cloudBatchMget(timeoutMs = 2500){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const path = CLOUD_DATA_KEYS.map(k => encodeURIComponent(k)).join('/');
+    const r = await fetch(KV_URL + '/mget/' + path, {
+      method: 'GET',
+      headers: cloudHeaders(),
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    if(!r.ok) throw new Error('Cloud MGET gagal: ' + r.status);
+    const j = await r.json();
+    const arr = Array.isArray(j.result) ? j.result : [];
+    const hasil = {};
+    CLOUD_DATA_KEYS.forEach((k, idx) => {
+      if(arr[idx] !== null && arr[idx] !== undefined){
+        hasil[k] = String(arr[idx]);
+      }
+    });
+    return hasil;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 window.__cloudInitPromise = (async () => {
+  cloudSyncing = true;
   try {
-    const data = await cloudBatchMget();
+    const data = await cloudBatchMget(2500);
+    let adaPerubahan = false;
     cloudApplying = true;
     Object.entries(data).forEach(([k, v]) => {
+      if(cloudPending.has(k)) return;
       if(localStorage.getItem(k) !== v){
         _setAsli(k, v);
+        adaPerubahan = true;
       }
       cloudSeen.set(k, v);
     });
     cloudApplying = false;
     cloudReady = true;
+    cloudSyncing = false;
+    if(adaPerubahan && typeof refreshTampilanSetelahCloud === 'function'){
+      refreshTampilanSetelahCloud();
+    }
     return true;
   } catch (e) {
     cloudApplying = false;
     cloudReady = true;
-    console.warn('Prefetch cloud gagal, menggunakan cache lokal:', e);
+    cloudSyncing = false;
+    console.warn('Prefetch cloud timeout/offline, menggunakan cache lokal:', e);
     return false;
   }
 })();
 </script>
+<link rel="preconnect" href="https://touching-monster-151282.upstash.io" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@600;700;800;900&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
@@ -195,8 +213,8 @@ th{background:#f7f7f7;font-size:12px}
 <label><b>Masukan Nama Lengkap</b></label>
 <input id="namaLogin" placeholder="Masukan Nama Lengkap" onkeydown="if(event.key==='Enter') login()">
 <div class="login-hint">Jika anda wali santri, maka masukan nama dengan format ( nama suami/nama istri ) atau sebaliknya agar tidak terjadi kesalahan informasi santri yang akan di tampilkan di halaman beranda anda</div>
-<button id="btnLogin" onclick="login()" disabled>Memuat Database...</button>
-<p class="small center" id="infoLogin">Menyinkronkan database terbaru dari cloud...</p>
+<button id="btnLogin" onclick="login()">MASUK</button>
+<p class="small center" id="infoLogin"></p>
 <p class="small center">Jika terdapat masalah dalam masuk homepage, hubungi <a class="link-amang" onclick="hubungiAmang()">Amang Badèn</a></p>
 </div>
 </div>
@@ -1721,15 +1739,38 @@ function pulihkanSesiLogin(){
 }
 
 async function login(){
-  if(!cloudReady && window.__cloudInitPromise){
-    document.getElementById('infoLogin').innerText = 'Menunggu database selesai dimuat...';
+  const infoEl = document.getElementById('infoLogin');
+  const btnEl = document.getElementById('btnLogin');
+  let nama = document.getElementById('namaLogin').value.trim();
+  if(!nama){ infoEl.innerText = 'Isi nama dulu.'; return; }
+
+  // Jika ini perangkat baru yang belum pernah menyimpan cache cloud sama sekali dan cloud masih berjalan, tunggu sebentar (maks 2.5 dtk)
+  const belumAdaCacheCloud = !localStorage.getItem('wali_nurulhikmah') && !localStorage.getItem('disetujui_nurulhikmah');
+  if(belumAdaCacheCloud && cloudSyncing && window.__cloudInitPromise){
+    if(btnEl){ btnEl.disabled = true; btnEl.innerText = 'Menyiapkan...'; }
+    infoEl.innerText = 'Menyiapkan data pertama kali...';
     await window.__cloudInitPromise;
     muatStateDariLocal();
+    if(btnEl){ btnEl.disabled = false; btnEl.innerText = 'MASUK'; }
+    infoEl.innerText = '';
+  } else {
+    muatStateDariLocal();
   }
-  let nama=document.getElementById('namaLogin').value.trim();
-  if(!nama){document.getElementById('infoLogin').innerText='Isi nama dulu.';return;}
+
   user=nama;waliAnak=[];santriAktif=null;
   role=tentukanRole(nama);
+
+  // Jika tidak ketemu di cache lokal tapi sinkronisasi cloud awal masih berjalan, tunggu hasil cloud sebelum menolak
+  if(role==='TAMU_DITOLAK' && cloudSyncing && window.__cloudInitPromise){
+    if(btnEl){ btnEl.disabled = true; btnEl.innerText = 'Memeriksa...'; }
+    infoEl.innerText = 'Memeriksa data terbaru...';
+    await window.__cloudInitPromise;
+    muatStateDariLocal();
+    if(btnEl){ btnEl.disabled = false; btnEl.innerText = 'MASUK'; }
+    infoEl.innerText = '';
+    role = tentukanRole(nama);
+  }
+
   if(role==='WALI_PILIH_POPUP'){
     const grup = cariGrupWaliByNamaTunggal(nama);
     bukaPopupPilihWaliTunggal(nama, grup);
@@ -1744,21 +1785,27 @@ async function login(){
   selesaikanLogin(nama,role);
 }
 
-// INISIALISASI SAAT CLOUD PRE-FETCH SELESAI
-(async function initAppSetelahCloud(){
-  if(window.__cloudInitPromise){
-    await window.__cloudInitPromise;
-  }
+// INISIALISASI INSTAN DARI CACHE LOKAL, LALU SINKRONISASI CLOUD DI LATAR BELAKANG
+(function initAppInstan(){
   muatStateDariLocal();
   if(!localStorage.getItem('santri_nurulhikmah')){
     santri = dataAwal;
-    localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri));
+    _setAsli('santri_nurulhikmah', JSON.stringify(santri));
   }
   const btn = document.getElementById('btnLogin');
   const info = document.getElementById('infoLogin');
   if(btn){ btn.disabled = false; btn.innerText = 'MASUK'; }
   if(info){ info.innerText = ''; }
   pulihkanSesiLogin();
+
+  if(window.__cloudInitPromise){
+    window.__cloudInitPromise.then(() => {
+      muatStateDariLocal();
+      if(user && role){
+        refreshTampilanSetelahCloud();
+      }
+    });
+  }
 })();
 
 function showHome(){
