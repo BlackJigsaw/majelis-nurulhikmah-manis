@@ -1673,18 +1673,15 @@ function kelompokkanKandidatWaliTunggal(namaLogin){
     if(!cocok) return;
     const sObj = santri.find(s => s.nis === w.nis);
     if(!sObj) return;
-    const grupKey = (w.namaWali || '').trim().toLowerCase().replace(/\s+/g,' ');
+    // Gunakan NIS sebagai pembeda grup unik agar setiap data wali/keluarga di database muncul sebagai pilihan terpisah di popup
+    const grupKey = 'wali_' + w.nis + '_' + (w.namaWali || '').trim().toLowerCase().replace(/\s+/g,'_');
     if(!grupMap.has(grupKey)){
       grupMap.set(grupKey, {
         grupKey,
         namaWaliDb: (w.namaWali || '').trim(),
         alamat: (w.alamat || '').trim(),
-        anakList: []
+        anakList: [sObj]
       });
-    }
-    const g = grupMap.get(grupKey);
-    if(!g.anakList.some(a => a.nis === sObj.nis)){
-      g.anakList.push(sObj);
     }
   });
   return Array.from(grupMap.values());
@@ -1718,16 +1715,15 @@ function cariAnakWali(namaLogin, pakaiPilihanPerangkat = true){
     const dbParts = pecahBagianWali(w.namaWali);
     if(!dbParts.length) return;
 
-    if(inputParts.length >= 2 && dbParts.length >= 2){
+    if(isFormatPasangan && inputParts.length >= 2 && dbParts.length >= 2){
       const pasanganSama = (cocokNamaWaliSatu(inputParts[0], dbParts[0]) && cocokNamaWaliSatu(inputParts[1], dbParts[1])) ||
                            (cocokNamaWaliSatu(inputParts[0], dbParts[1]) && cocokNamaWaliSatu(inputParts[1], dbParts[0]));
-      const salahSatuCocok = inputParts.some(ip => dbParts.some(dp => cocokNamaWaliSatu(ip, dp)));
-      if(pasanganSama || salahSatuCocok){
+      if(pasanganSama){
         nisSet.add(w.nis);
       }
     } else {
       const cocok = inputParts.some(ip => dbParts.some(dp => cocokNamaWaliSatu(ip, dp)));
-      if(cocok){
+      if(cocok && !isFormatPasangan){
         nisSet.add(w.nis);
       } else if(isNamaPengurus(namaLogin) && adaKataSama(namaLogin, w.namaWali||'')){
         nisSet.add(w.nis);
@@ -1738,7 +1734,6 @@ function cariAnakWali(namaLogin, pakaiPilihanPerangkat = true){
   if(!nisSet.size) return [];
   return santri.filter(s => nisSet.has(s.nis));
 }
-
 function cariSantriByLogin(namaLogin){
   if(String(namaLogin||'').includes('/')) return null;
   let cocok = santri.filter(s=> adaKataSama(namaLogin, s.nama));
