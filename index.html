@@ -13,7 +13,7 @@ const CLOUD_DATA_KEYS = [
   'santri_nurulhikmah','riwayat_nurulhikmah','rekap_santri_nurulhikmah','wali_nurulhikmah',
   'struktur_nurulhikmah','permintaan_akses_nurulhikmah','disetujui_nurulhikmah',
   'permintaan_hapus_santri_nurulhikmah','pengumuman_nurulhikmah','pengunjung_nurulhikmah',
-  'pesan_khusus_nurulhikmah','revisi_absen_nurulhikmah'
+  'pesan_khusus_nurulhikmah','revisi_absen_nurulhikmah','catatan_pribadi_nurulhikmah'
 ];
 const CLOUD_DATA_SET = new Set(CLOUD_DATA_KEYS);
 const _setAsli = localStorage.setItem.bind(localStorage);
@@ -178,6 +178,8 @@ th{background:#f7f7f7;font-size:12px}
 .login-hint{font-size:12px;color:#0b6e4f;background:#f2faf5;border:1px solid #d5ebe0;border-radius:10px;padding:10px;margin-top:8px;line-height:1.5}
 .pesan-aktif-box{background:#fffaf0;border:1.5px solid #d4af37;border-radius:12px;padding:11px;margin-top:10px;font-size:13px;line-height:1.55}
 .revisi-log-card{background:#fbfdfb;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-top:10px}
+.catatan-pribadi-box{background:#eef7ff;border:1.5px solid #2980b9;border-left:5px solid #2980b9;border-radius:12px;padding:11px 12px;margin-top:10px;font-size:14px;line-height:1.6;color:#1a365d}
+.catatan-pribadi-box b.judul-catatan{color:#1b4f72;display:block;margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -260,6 +262,7 @@ th{background:#f7f7f7;font-size:12px}
 <p class="small" id="santriTanggal">Tanggal: -</p>
 <div class="santri-status-big" id="santriStatusHariIni">-</div>
 <div class="santri-pesan" id="santriPesan">-</div>
+<div id="santriCatatanPribadiWrap" class="hidden"></div>
 <p class="small center">Yang ditampilkan di sini hanya absen kamu hari ini saja.</p>
 </div>
 <div class="card">
@@ -342,6 +345,13 @@ th{background:#f7f7f7;font-size:12px}
 <button onclick="kirimPesanKhusus()">Kirim Pesan Khusus</button>
 <button class="danger" onclick="hapusPesanKhusus()">Hapus Pesan Khusus</button>
 <div id="previewPesanKhususAdmin" class="pesan-aktif-box">Belum ada pesan khusus aktif.</div>
+</div>
+
+<div class="card hidden" id="cardCatatanPribadiAdmin">
+<h3 style="margin:0">📝 Kirim Catatan Pribadi ke Santri</h3>
+<p class="small">Buka halaman khusus untuk menulis dan memposting catatan pribadi ke kartu informasi santri di halaman <b>User Santri</b> dan <b>User Wali</b> (termasuk Pengurus yang menjadi wali).</p>
+<button class="gold" onclick="bukaHalamanCatatanPribadi()">✉️ Buka Halaman Kirim Catatan ke Santri</button>
+<div id="ringkasanCatatanPribadiAdmin" class="pesan-aktif-box" style="margin-top:10px">Belum ada catatan pribadi aktif.</div>
 </div>
 
 <div class="card hidden" id="cardPermintaanAkses">
@@ -438,6 +448,76 @@ th{background:#f7f7f7;font-size:12px}
 <div class="card hidden" id="cardKeluarAdmin">
 <button class="secondary" style="margin-top:0" onclick="logout()">Keluar</button>
 </div>
+</div>
+</div>
+
+<!-- HALAMAN BARU: KIRIM CATATAN PRIBADI KE SANTRI & WALI -->
+<div id="catatanPribadiPage" class="struktur-page">
+<header>
+<div class="arab">مجلس تعليم نور الحكمة</div>
+<h1 style="font-size:20px">KIRIM CATATAN PRIBADI</h1>
+<div class="ornamen">✦ ─── ۞ ─── ✦</div>
+<p class="tagline">Tampil di Kartu Informasi User Santri & User Wali</p>
+</header>
+<div class="org-wrap">
+<div class="card"><button class="secondary" style="margin-top:0" onclick="tutupHalamanCatatanPribadi()">← Kembali ke Beranda Admin</button></div>
+
+<div class="card">
+<h3 style="margin:0">✍️ Tulis & Posting Catatan Pribadi</h3>
+<p class="small">Pilih santri tujuan melalui daftar checklist di bawah, tulis catatannya, lalu klik <b>Posting Catatan</b>. Catatan akan otomatis muncul di dalam <b>kartu informasi santri</b> pada akun <b>User Santri</b> dan <b>User Wali</b> (termasuk Pengurus yang sekaligus menjadi wali).</p>
+
+<label style="display:block;margin-top:10px"><b>Isi Catatan Pribadi</b></label>
+<textarea id="teksCatatanPribadi" style="min-height:110px" placeholder="Tulis catatan pribadi untuk santri & walinya... contoh: Mohon dimurojaah hafalan surat pendeknya di rumah bersama orang tua ya..."></textarea>
+
+<div class="pilih-anak-box">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
+    <b class="small" style="color:#0b6e4f">Pilih Santri Tujuan (Checklist):</b>
+    <span class="chip" id="infoTerpilihCatatan" style="margin:0">0 santri dipilih</span>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <button type="button" class="secondary" style="padding:8px;font-size:12px" onclick="pilihSemuaSantriCatatan(true)">Centang Semua</button>
+    <button type="button" class="secondary" style="padding:8px;font-size:12px" onclick="pilihSemuaSantriCatatan(false)">Hapus Centang</button>
+  </div>
+  <input id="cariSantriCatatan" placeholder="Cari nama santri / NIS / nama wali..." oninput="filterChecklistSantri('listChecklistSantriCatatan', this.value)" style="padding:9px;font-size:13px">
+  <div id="listChecklistSantriCatatan" class="pilih-anak-list" style="max-height:260px" onchange="updateJumlahTerpilihCatatan()"></div>
+</div>
+
+<div class="row" style="margin-top:12px">
+  <button id="btnPostingCatatanPribadi" onclick="kirimCatatanPribadi()">📌 Posting Catatan</button>
+  <button type="button" class="secondary" onclick="resetFormCatatanPribadi()">Reset Form</button>
+</div>
+</div>
+
+<div class="card">
+<h3 style="margin:0">📋 Daftar Catatan Pribadi Aktif</h3>
+<p class="small">Catatan yang sedang tayang di kartu informasi santri & wali. Klik <b>Edit</b> untuk mengubah atau <b>Hapus</b> untuk menarik catatan.</p>
+<div id="daftarCatatanPribadiAktif" style="margin-top:10px"></div>
+</div>
+
+<div class="card" style="border:1.5px solid #f5c6cb;background:#fff8f8">
+<h3 style="margin:0;color:#c0392b">🗑️ Hapus Pesan / Catatan Pribadi</h3>
+<p class="small">Pilih user/santri tertentu melalui checklist di bawah untuk menghapus pesan mereka, atau hapus pesan untuk <b>semua user sekaligus</b>.</p>
+
+<div class="pilih-anak-box" style="background:#fff;border-color:#f5c6cb">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
+    <b class="small" style="color:#c0392b">Pilih Santri yang Pesannya Ingin Dihapus:</b>
+    <span class="chip" id="infoTerpilihHapusCatatan" style="margin:0;background:#ffebee;color:#c0392b">0 santri dipilih</span>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <button type="button" class="secondary" style="padding:7px;font-size:12px" onclick="pilihSemuaSantriHapusCatatan(true)">Centang Semua</button>
+    <button type="button" class="secondary" style="padding:7px;font-size:12px" onclick="pilihSemuaSantriHapusCatatan(false)">Hapus Centang</button>
+  </div>
+  <input id="cariSantriHapusCatatan" placeholder="Cari nama santri / NIS..." oninput="filterChecklistSantri('listChecklistSantriHapusCatatan', this.value)" style="padding:8px;font-size:13px">
+  <div id="listChecklistSantriHapusCatatan" class="pilih-anak-list" style="max-height:200px" onchange="updateJumlahTerpilihHapusCatatan()"></div>
+</div>
+
+<div class="row" style="margin-top:10px">
+  <button class="danger" onclick="hapusCatatanPribadiTerpilih()">🗑️ Hapus Pesan User Terpilih</button>
+  <button class="secondary" style="background:#ffebee;color:#c0392b" onclick="hapusSemuaCatatanPribadi()">⚠️ Hapus Semua Pesan (Semua User)</button>
+</div>
+</div>
+
+<div class="card"><button class="secondary" style="margin-top:0" onclick="tutupHalamanCatatanPribadi()">← Kembali ke Beranda Admin</button></div>
 </div>
 </div>
 
@@ -695,6 +775,7 @@ function muatStateDariLocal(){
   try{ const v=localStorage.getItem('pengunjung_nurulhikmah'); if(v) pengunjung=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pesan_khusus_nurulhikmah'); if(v) pesanKhusus=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('revisi_absen_nurulhikmah'); if(v) revisiAbsenLog=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('catatan_pribadi_nurulhikmah'); if(v) catatanPribadiMap=JSON.parse(v); }catch(e){}
 }
 
 function refreshTampilanSetelahCloud(){
@@ -707,7 +788,7 @@ function refreshTampilanSetelahCloud(){
     tampilSantri(); tampilRiwayat();
     if(isAdmin()){
       tampilPermintaanAkses(); tampilPermintaanHapus(); tampilPengunjung();
-      tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin();
+      tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin(); tampilDaftarCatatanPribadiAdmin();
       if(document.getElementById('editDatabasePage').classList.contains('show')) tampilEditDatabase();
       if(document.getElementById('aksesKhususPage').classList.contains('show')) tampilAksesKhususPage();
     }
@@ -913,6 +994,7 @@ function bukaRiwayatRevisiPage(){
 }
 function tutupRiwayatRevisiPage(){
   document.getElementById('riwayatRevisiPage').classList.remove('show');
+  document.getElementById('catatanPribadiPage').classList.remove('show');
 }
 function bukaAksesKhususPage(){
   if(!isAdmin()) return;
@@ -1166,6 +1248,7 @@ function tolakAkses(i){
 // ===== PENGUMUMAN =====
 let pengumuman = JSON.parse(localStorage.getItem('pengumuman_nurulhikmah')||'null');
 let pesanKhusus = JSON.parse(localStorage.getItem('pesan_khusus_nurulhikmah')||'null');
+let catatanPribadiMap = JSON.parse(localStorage.getItem('catatan_pribadi_nurulhikmah')||'{}');
 let revisiAbsenLog = JSON.parse(localStorage.getItem('revisi_absen_nurulhikmah')||'[]');
 let santriDipilihUntukRevisi = null;
 function tampilPengumuman(){
@@ -1427,25 +1510,19 @@ function bersihkanNamaWaliTunggal(str){
     .trim();
 }
 
-function pecahPasanganWali(str){
-  if(!String(str||'').includes('/')) return null;
-  const parts = String(str).split('/').map(s => bersihkanNamaWaliTunggal(s)).filter(Boolean);
-  if(parts.length !== 2) return null;
-  return parts;
+function pecahBagianWali(str){
+  return String(str||'')
+    .split('/')
+    .map(s => bersihkanNamaWaliTunggal(s))
+    .filter(Boolean);
 }
 
-function cocokPasanganNama(inputPair, dbPair){
-  if(!inputPair || !dbPair || inputPair.length !== 2 || dbPair.length !== 2) return false;
-  const cocokSatu = (a, b) => {
-    if(!a || !b) return false;
-    if(a === b) return true;
-    const kataA = a.split(' ');
-    const kataB = b.split(' ');
-    return kataA.every(k => kataB.includes(k)) || kataB.every(k => kataA.includes(k));
-  };
-  const urutanSama = cocokSatu(inputPair[0], dbPair[0]) && cocokSatu(inputPair[1], dbPair[1]);
-  const urutanTerbalik = cocokSatu(inputPair[0], dbPair[1]) && cocokSatu(inputPair[1], dbPair[0]);
-  return urutanSama || urutanTerbalik;
+function cocokNamaWaliSatu(a, b){
+  if(!a || !b) return false;
+  if(a === b) return true;
+  const kataA = a.split(' ');
+  const kataB = b.split(' ');
+  return kataA.every(k => kataB.includes(k)) || kataB.every(k => kataA.includes(k));
 }
 
 function pecahKata(nama){
@@ -1477,23 +1554,34 @@ function cariAnakWali(namaLogin){
   if(acc && (acc.role==='WALI' || acc.role==='PENGURUS') && Array.isArray(acc.anakNis) && acc.anakNis.length){
     acc.anakNis.forEach(n => nisSet.add(n));
   }
-  const inputPair = pecahPasanganWali(namaLogin);
-  if(inputPair){
-    waliList.forEach(w => {
-      const dbPair = pecahPasanganWali(w.namaWali);
-      if(cocokPasanganNama(inputPair, dbPair)){
+  const inputParts = pecahBagianWali(namaLogin);
+  if(!inputParts.length && !nisSet.size) return [];
+
+  waliList.forEach(w => {
+    const dbParts = pecahBagianWali(w.namaWali);
+    if(!dbParts.length) return;
+
+    if(inputParts.length >= 2 && dbParts.length >= 2){
+      // Jika kedua pasangan cocok (urutan sama atau terbalik)
+      const pasanganSama = (cocokNamaWaliSatu(inputParts[0], dbParts[0]) && cocokNamaWaliSatu(inputParts[1], dbParts[1])) ||
+                           (cocokNamaWaliSatu(inputParts[0], dbParts[1]) && cocokNamaWaliSatu(inputParts[1], dbParts[0]));
+      // Atau salah satu nama dari format nama1/nama2 ada di database wali
+      const salahSatuCocok = inputParts.some(ip => dbParts.some(dp => cocokNamaWaliSatu(ip, dp)));
+      if(pasanganSama || salahSatuCocok){
+        nisSet.add(w.nis);
+      }
+    } else {
+      // Input tunggal (misal "Eros") atau DB tunggal (misal "Ibu Eros" atau "Bapak Apin/Ibu Eros"):
+      // Cocokkan jika ada salah satu bagian nama yang sama persis / seluruh kata cocok
+      const cocok = inputParts.some(ip => dbParts.some(dp => cocokNamaWaliSatu(ip, dp)));
+      if(cocok){
         nisSet.add(w.nis);
       } else if(isNamaPengurus(namaLogin) && adaKataSama(namaLogin, w.namaWali||'')){
         nisSet.add(w.nis);
       }
-    });
-  } else if(isNamaPengurus(namaLogin)){
-    waliList.forEach(w => {
-      if(adaKataSama(namaLogin, w.namaWali||'')){
-        nisSet.add(w.nis);
-      }
-    });
-  }
+    }
+  });
+
   if(!nisSet.size) return [];
   return santri.filter(s => nisSet.has(s.nis));
 }
@@ -1523,6 +1611,12 @@ function tentukanRole(nama){
       return 'WALI';
     }
     return 'TAMU_DITOLAK';
+  }
+  // Cek apakah nama tunggal terdaftar sebagai Wali Santri di database
+  let anakWaliTunggal = cariAnakWali(nama);
+  if(anakWaliTunggal.length > 0){
+    waliAnak = anakWaliTunggal;
+    return 'WALI';
   }
   let s = cariSantriByLogin(nama);
   if(s){
@@ -1624,6 +1718,7 @@ function showHome(){
   document.getElementById('cardPengumumanAdmin').classList.add('hidden');
   document.getElementById('cardRevisiAbsenAdmin').classList.add('hidden');
   document.getElementById('cardPesanKhususAdmin').classList.add('hidden');
+  document.getElementById('cardCatatanPribadiAdmin').classList.add('hidden');
   document.getElementById('cardPermintaanAkses').classList.add('hidden');
   document.getElementById('cardPermintaanHapus').classList.add('hidden');
   document.getElementById('btnEditDatabaseWrap').classList.add('hidden');
@@ -1670,7 +1765,8 @@ function showHome(){
     document.getElementById('cardPengumumanAdmin').classList.remove('hidden');
     document.getElementById('cardRevisiAbsenAdmin').classList.remove('hidden');
     document.getElementById('cardPesanKhususAdmin').classList.remove('hidden');
-    tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin();
+    document.getElementById('cardCatatanPribadiAdmin').classList.remove('hidden');
+    tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin(); tampilDaftarCatatanPribadiAdmin();
     document.getElementById('cardPermintaanAkses').classList.remove('hidden');
     document.getElementById('cardPermintaanHapus').classList.remove('hidden');
     document.getElementById('btnEditDatabaseWrap').classList.remove('hidden');
@@ -1814,11 +1910,18 @@ function getKontenKartuInformasi(s){
   };
 }
 
+function renderHtmlCatatanPribadi(nis){
+  const item = catatanPribadiMap && catatanPribadiMap[nis];
+  if(!item || !item.teks) return '';
+  return `<div class="catatan-pribadi-box"><b class="judul-catatan">📝 Catatan Pribadi dari Admin:</b><div style="white-space:pre-wrap">${esc(item.teks)}</div><span class="small" style="display:block;margin-top:6px;color:#4a6fa5">Dikirim: ${esc(item.waktu||'-')}</span></div>`;
+}
+
 function kartuAnakWali(s){
   let idx=santri.findIndex(x=>x.nis===s.nis);
   let w=cariWaliByNIS(s.nis);
   let kartu = getKontenKartuInformasi(s);
-  return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${kartu.cls}">${kartu.label}</b><br><span class="small">Tanggal: ${kartu.tanggalTampil}</span></p><div class="wali-pesan">${kartu.pesan}</div><button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button></div>`;
+  let catatanHtml = renderHtmlCatatanPribadi(s.nis);
+  return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${kartu.cls}">${kartu.label}</b><br><span class="small">Tanggal: ${kartu.tanggalTampil}</span></p><div class="wali-pesan">${kartu.pesan}</div>${catatanHtml}<button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button></div>`;
 }
 
 function tampilWaliPage(){
@@ -1845,6 +1948,17 @@ function tampilSantriPage(){
   elStatus.innerText = kartu.emoji + kartu.label;
   elStatus.style.color = kartu.label==='Hadir' ? '#0b6e4f' : kartu.label==='Sakit' ? '#e67e22' : kartu.label==='Izin' ? '#2980b9' : kartu.cls==='st-Wait' ? '#7f8c8d' : '#c0392b';
   document.getElementById('santriPesan').innerHTML = kartu.pesan;
+  let wrapCatatanSantri = document.getElementById('santriCatatanPribadiWrap');
+  if(wrapCatatanSantri){
+    let htmlCatatan = renderHtmlCatatanPribadi(sNow.nis);
+    if(htmlCatatan){
+      wrapCatatanSantri.innerHTML = htmlCatatan;
+      wrapCatatanSantri.classList.remove('hidden');
+    } else {
+      wrapCatatanSantri.innerHTML = '';
+      wrapCatatanSantri.classList.add('hidden');
+    }
+  }
 
   let r = rekapSantri[sNow.nis] || {hadir:0, sakit:0, izin:0, tanpaKet:0, perTanggal:{}};
   let total = r.hadir + r.sakit + r.izin + r.tanpaKet;
@@ -2099,7 +2213,7 @@ function backupData(){
     </thead>
     <tbody>${rows}</tbody>
   </table>
-  </body></html>`);
+</body></html>`);
   w.document.close();
   setTimeout(() => w.print(), 400);
 }
@@ -2334,6 +2448,184 @@ async function shareWA(){
   simpanRiwayat(); tampilRiwayat(); updateRekapSantri(tglVal, santri);
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
   await cloudFlush();
+}
+
+// ===== CATATAN PRIBADI SANTRI & WALI (ADMIN - HALAMAN KHUSUS) =====
+function bukaHalamanCatatanPribadi(preselectNis){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa membuka halaman kirim catatan pribadi.');
+  document.getElementById('teksCatatanPribadi').value = preselectNis && catatanPribadiMap[preselectNis] ? (catatanPribadiMap[preselectNis].teks || '') : '';
+  document.getElementById('cariSantriCatatan').value = '';
+  const selected = preselectNis ? [preselectNis] : [];
+  renderChecklistSantri('listChecklistSantriCatatan', selected, 'santriCatatanCheck');
+  updateJumlahTerpilihCatatan();
+  renderChecklistSantri('listChecklistSantriHapusCatatan', [], 'santriHapusCatatanCheck');
+  document.getElementById('cariSantriHapusCatatan').value = '';
+  updateJumlahTerpilihHapusCatatan();
+  tampilDaftarCatatanPribadiAdmin();
+  const page = document.getElementById('catatanPribadiPage');
+  page.classList.add('show');
+  page.scrollTop = 0;
+}
+function tutupHalamanCatatanPribadi(){
+  document.getElementById('catatanPribadiPage').classList.remove('show');
+  tampilDaftarCatatanPribadiAdmin();
+}
+function resetFormCatatanPribadi(){
+  document.getElementById('teksCatatanPribadi').value = '';
+  document.getElementById('cariSantriCatatan').value = '';
+  renderChecklistSantri('listChecklistSantriCatatan', [], 'santriCatatanCheck');
+  updateJumlahTerpilihCatatan();
+}
+function pilihSemuaSantriCatatan(pilih){
+  const wrap = document.getElementById('listChecklistSantriCatatan');
+  if(!wrap) return;
+  wrap.querySelectorAll('.pilih-anak-item').forEach(item=>{
+    if(item.style.display !== 'none'){
+      const cb = item.querySelector('input[type=checkbox]');
+      if(cb) cb.checked = pilih;
+    }
+  });
+  updateJumlahTerpilihCatatan();
+}
+function updateJumlahTerpilihCatatan(){
+  const terpilih = getCheckedNis('listChecklistSantriCatatan');
+  const el = document.getElementById('infoTerpilihCatatan');
+  if(el) el.innerText = terpilih.length + ' santri dipilih';
+}
+async function kirimCatatanPribadi(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa memposting catatan pribadi.');
+  const teks = document.getElementById('teksCatatanPribadi').value.trim();
+  const daftarNis = getCheckedNis('listChecklistSantriCatatan');
+  if(!teks) return alert('Tulis isi catatan pribadi terlebih dahulu.');
+  if(!daftarNis.length) return alert('Centang minimal 1 santri tujuan catatan pribadi.');
+  const btn = document.getElementById('btnPostingCatatanPribadi');
+  if(btn){ btn.disabled = true; btn.innerText = 'Memposting...'; }
+  try {
+    const waktu = new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    daftarNis.forEach(nis=>{
+      const s = santri.find(x=>x.nis===nis);
+      catatanPribadiMap[nis] = {
+        nis,
+        namaSantri: s ? s.nama : nis,
+        teks,
+        pengirim: user,
+        waktu
+      };
+    });
+    localStorage.setItem('catatan_pribadi_nurulhikmah', JSON.stringify(catatanPribadiMap));
+    tampilDaftarCatatanPribadiAdmin();
+    resetFormCatatanPribadi();
+    if(isWali()) tampilWaliPage();
+    if(isPengurus()) tampilPengurusPage();
+    if(isSantri()) tampilSantriPage();
+    await cloudFlush();
+    alert('Catatan pribadi berhasil diposting untuk ' + daftarNis.length + ' santri! Catatan otomatis tampil di kartu informasi halaman User Santri & User Wali (termasuk Pengurus yang menjadi wali).');
+  } finally {
+    if(btn){ btn.disabled = false; btn.innerText = '📌 Posting Catatan'; }
+  }
+}
+async function hapusCatatanPribadiSatu(nis){
+  if(!isAdmin()) return;
+  const item = catatanPribadiMap[nis];
+  if(!item) return;
+  if(!confirm('Hapus catatan pribadi untuk ' + (item.namaSantri||nis) + '?')) return;
+  delete catatanPribadiMap[nis];
+  localStorage.setItem('catatan_pribadi_nurulhikmah', JSON.stringify(catatanPribadiMap));
+  tampilDaftarCatatanPribadiAdmin();
+  renderChecklistSantri('listChecklistSantriHapusCatatan', [], 'santriHapusCatatanCheck');
+  updateJumlahTerpilihHapusCatatan();
+  if(isWali()) tampilWaliPage();
+  if(isPengurus()) tampilPengurusPage();
+  if(isSantri()) tampilSantriPage();
+  await cloudFlush();
+}
+function pilihSemuaSantriHapusCatatan(pilih){
+  const wrap = document.getElementById('listChecklistSantriHapusCatatan');
+  if(!wrap) return;
+  wrap.querySelectorAll('.pilih-anak-item').forEach(item=>{
+    if(item.style.display !== 'none'){
+      const cb = item.querySelector('input[type=checkbox]');
+      if(cb) cb.checked = pilih;
+    }
+  });
+  updateJumlahTerpilihHapusCatatan();
+}
+function updateJumlahTerpilihHapusCatatan(){
+  const terpilih = getCheckedNis('listChecklistSantriHapusCatatan');
+  const el = document.getElementById('infoTerpilihHapusCatatan');
+  if(el) el.innerText = terpilih.length + ' santri dipilih';
+}
+async function hapusCatatanPribadiTerpilih(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa menghapus catatan pribadi.');
+  const daftarNis = getCheckedNis('listChecklistSantriHapusCatatan');
+  if(!daftarNis.length) return alert('Centang minimal 1 santri yang ingin dihapus pesannya.');
+  if(!confirm('Hapus catatan pribadi untuk ' + daftarNis.length + ' santri terpilih?')) return;
+  daftarNis.forEach(nis=>{
+    delete catatanPribadiMap[nis];
+  });
+  localStorage.setItem('catatan_pribadi_nurulhikmah', JSON.stringify(catatanPribadiMap));
+  tampilDaftarCatatanPribadiAdmin();
+  renderChecklistSantri('listChecklistSantriHapusCatatan', [], 'santriHapusCatatanCheck');
+  updateJumlahTerpilihHapusCatatan();
+  if(isWali()) tampilWaliPage();
+  if(isPengurus()) tampilPengurusPage();
+  if(isSantri()) tampilSantriPage();
+  await cloudFlush();
+  alert('Catatan pribadi berhasil dihapus untuk ' + daftarNis.length + ' santri terpilih.');
+}
+async function hapusSemuaCatatanPribadi(){
+  if(!isAdmin()) return alert('Hanya Admin yang bisa menghapus seluruh catatan pribadi.');
+  const keys = Object.keys(catatanPribadiMap || {}).filter(k => catatanPribadiMap[k] && catatanPribadiMap[k].teks);
+  if(!keys.length) return alert('Tidak ada catatan pribadi aktif saat ini.');
+  if(!confirm('⚠️ PERINGATAN: Hapus seluruh catatan pribadi untuk SEMUA USER sekaligus? Tindakan ini akan menarik catatan dari seluruh kartu informasi santri & wali.')) return;
+  catatanPribadiMap = {};
+  localStorage.setItem('catatan_pribadi_nurulhikmah', JSON.stringify(catatanPribadiMap));
+  tampilDaftarCatatanPribadiAdmin();
+  renderChecklistSantri('listChecklistSantriHapusCatatan', [], 'santriHapusCatatanCheck');
+  updateJumlahTerpilihHapusCatatan();
+  if(isWali()) tampilWaliPage();
+  if(isPengurus()) tampilPengurusPage();
+  if(isSantri()) tampilSantriPage();
+  await cloudFlush();
+  alert('Semua catatan pribadi berhasil dihapus untuk semua user sekaligus.');
+}
+function tampilDaftarCatatanPribadiAdmin(){
+  const wrap = document.getElementById('daftarCatatanPribadiAktif');
+  const ringkasan = document.getElementById('ringkasanCatatanPribadiAdmin');
+  const keys = Object.keys(catatanPribadiMap || {}).filter(k => catatanPribadiMap[k] && catatanPribadiMap[k].teks);
+  if(ringkasan){
+    if(!keys.length){
+      ringkasan.innerHTML = '<i>Belum ada catatan pribadi aktif yang diposting ke santri/wali.</i>';
+    } else {
+      const namaDaftar = keys.map(nis => {
+        const sObj = santri.find(x=>x.nis===nis);
+        return esc(sObj ? sObj.nama : (catatanPribadiMap[nis].namaSantri || nis));
+      }).join(', ');
+      ringkasan.innerHTML = `<b>📌 Catatan Pribadi Aktif (${keys.length} Santri):</b><br><span class="small">Penerima: ${namaDaftar}</span>`;
+    }
+  }
+  if(!wrap) return;
+  if(!keys.length){
+    wrap.innerHTML = '<div class="pesan-aktif-box"><i>Belum ada catatan pribadi aktif yang diposting ke santri/wali.</i></div>';
+    return;
+  }
+  wrap.innerHTML = '<b class="small" style="color:#0b6e4f;display:block;margin-bottom:6px">📌 Catatan Pribadi Aktif (' + keys.length + ' Santri):</b>' +
+    keys.map(nis => {
+      const c = catatanPribadiMap[nis];
+      const sObj = santri.find(x=>x.nis===nis);
+      const nama = sObj ? sObj.nama : (c.namaSantri || nis);
+      return `<div class="pesan-aktif-box" style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:start;gap:8px">
+          <div><b>${esc(nama)}</b> <span class="small">(NIS: ${esc(nis)})</span></div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-edit-kecil" type="button" onclick="bukaHalamanCatatanPribadi('${esc(nis)}')">Edit</button>
+            <button class="btn-hapus-kecil" type="button" onclick="hapusCatatanPribadiSatu('${esc(nis)}')">Hapus</button>
+          </div>
+        </div>
+        <div style="margin:6px 0;white-space:pre-wrap;color:#222">${esc(c.teks)}</div>
+        <span class="small">Diposting: ${esc(c.waktu||'-')}</span>
+      </div>`;
+    }).join('');
 }
 </script>
 <div id="popupRevisiAbsen" class="modal" onclick="if(event.target===this) tutupPopupRevisiAbsen()">
