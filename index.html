@@ -1,3 +1,4 @@
+<!-- fix deploy -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -44,30 +45,25 @@ async function cloudBatchMget(){
   return hasil;
 }
 
-// PERBAIKAN: Menambahkan mekanisme timeout (Promise.race max 7 detik) agar tidak stuck selamanya jika jaringan lambat/gagal
 window.__cloudInitPromise = (async () => {
-  const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 7000));
-  const fetchPromise = (async () => {
-    try {
-      const data = await cloudBatchMget();
-      cloudApplying = true;
-      Object.entries(data).forEach(([k, v]) => {
-        if(localStorage.getItem(k) !== v){
-          _setAsli(k, v);
-        }
-        cloudSeen.set(k, v);
-      });
-      cloudApplying = false;
-      cloudReady = true;
-      return true;
-    } catch (e) {
-      cloudApplying = false;
-      cloudReady = true;
-      console.warn('Prefetch cloud gagal, menggunakan cache lokal:', e);
-      return false;
-    }
-  })();
-  return await Promise.race([fetchPromise, timeoutPromise]);
+  try {
+    const data = await cloudBatchMget();
+    cloudApplying = true;
+    Object.entries(data).forEach(([k, v]) => {
+      if(localStorage.getItem(k) !== v){
+        _setAsli(k, v);
+      }
+      cloudSeen.set(k, v);
+    });
+    cloudApplying = false;
+    cloudReady = true;
+    return true;
+  } catch (e) {
+    cloudApplying = false;
+    cloudReady = true;
+    console.warn('Prefetch cloud gagal, menggunakan cache lokal:', e);
+    return false;
+  }
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -807,8 +803,7 @@ function bukaEditStruktur(e){
   if(e) { e.preventDefault(); e.stopPropagation(); }
   if(!(role==='ADMIN' && user==='Hamdan1438')){ alert('Hanya Admin yang bisa edit struktur.'); return; }
   editStrukturDibuka = true;
-  let teks = strukturData.map(s=> s.jabatan+' | '+s.nama.join(' ; ')).join('
-');
+  let teks = strukturData.map(s=> s.jabatan+' | '+s.nama.join(' ; ')).join('\n');
   document.getElementById('editStrukturText').value = teks;
   let p = document.getElementById('popupEditStruktur');
   p.classList.add('show');
@@ -826,8 +821,7 @@ function simpanStruktur(){
   let teks = document.getElementById('editStrukturText').value.trim();
   if(!teks) return alert('Isi struktur dulu.');
   let baru = [];
-  teks.split('
-').forEach(line=>{
+  teks.split('\n').forEach(line=>{
     line=line.trim(); if(!line) return;
     let parts = line.split('|');
     if(parts.length<2) return;
@@ -965,7 +959,7 @@ function tampilPermintaanHapus(){
     <span class="small">Diajukan oleh: <b>${esc(namaTampil(p.pengaju))}</b> • ${esc(p.waktu)}</span>
     ${!masihAda ? '<br><span class="small" style="color:#c0392b">Catatan: Data santri ini sudah tidak ada di daftar.</span>' : ''}
     <div class="row" style="margin-top:8px">
-      <button class="danger" onclick="setujuiHapusSantri(${i})">Setujui ✅</button>
+      <button class="danger" onclick="setujuiHapusSantri(${i})">Setujui Hapus ✅</button>
       <button class="secondary" onclick="tolakHapusSantri(${i})">Tolak ❌</button>
     </div>`;
     wrap.appendChild(div);
@@ -1090,7 +1084,7 @@ function tampilAksesKhususPage(){
       </div>
     </div>
     <div class="row" style="margin-top:8px">
-      <button class="btn-edit-kecil" onclick="bukaEditUserKhusus('${esc(d.nama).replace(/'/g,"\'")}')">✏️ Edit Role</button>
+      <button class="btn-edit-kecil" onclick="bukaEditUserKhusus('${esc(d.nama).replace(/'/g,"\\'")}')">✏️ Edit Role</button>
       <button class="btn-hapus-kecil" onclick="hapusAksesKhusus(${idx})">🗑️ Hapus Akses</button>
     </div>`;
     wrap.appendChild(div);
@@ -1388,12 +1382,8 @@ function hapusSatuPengunjung(idx){
   let acc = cariDisetujui(p.nama);
   let pesan = acc
     ? (acc.viaAcc
-        ? 'Hapus '+p.nama+' dari Daftar Pengunjung?
-
-Nama ini masuk lewat ACC Admin, jadi ACC-nya juga akan dicabut dan dia tidak bisa login lagi.'
-        : 'Hapus '+p.nama+' dari Daftar Pengunjung?
-
-Pengaturan role/anak khusus untuk user ini juga akan direset ke bawaan.')
+        ? 'Hapus '+p.nama+' dari Daftar Pengunjung?\n\nNama ini masuk lewat ACC Admin, jadi ACC-nya juga akan dicabut dan dia tidak bisa login lagi.'
+        : 'Hapus '+p.nama+' dari Daftar Pengunjung?\n\nPengaturan role/anak khusus untuk user ini juga akan direset ke bawaan.')
     : 'Hapus '+p.nama+' dari Daftar Pengunjung?';
   if(!confirm(pesan)) return;
   pengunjung.splice(idx,1); simpanPengunjung();
@@ -1475,7 +1465,7 @@ function isNamaPengurus(text){
 function cekTamuOtomatis(nama){
   let low = nama.toLowerCase().trim();
   if(!low.includes('tamu')) return false;
-  let sisa = low.replace(/tamu/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  let sisa = low.replace(/\btamu\b/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   if(!sisa) return false;
   let cocokSantri = santri.some(s=> adaKataSama(sisa, s.nama));
   let cocokWali = waliList.some(w=> adaKataSama(sisa, w.namaWali||''));
@@ -1575,10 +1565,7 @@ function pulihkanSesiLogin(){
 async function login(){
   if(!cloudReady && window.__cloudInitPromise){
     document.getElementById('infoLogin').innerText = 'Menunggu database selesai dimuat...';
-    await Promise.race([
-      window.__cloudInitPromise,
-      new Promise(resolve => setTimeout(resolve, 5000))
-    ]);
+    await window.__cloudInitPromise;
     muatStateDariLocal();
   }
   let nama=document.getElementById('namaLogin').value.trim();
@@ -1594,24 +1581,16 @@ async function login(){
   selesaikanLogin(nama,role);
 }
 
-// INISIALISASI SAAT CLOUD PRE-FETCH SELESAI (Dengan proteksi Fallback Timeout max 8 detik)
+// INISIALISASI SAAT CLOUD PRE-FETCH SELESAI
 (async function initAppSetelahCloud(){
-  try {
-    if(window.__cloudInitPromise){
-      await Promise.race([
-        window.__cloudInitPromise,
-        new Promise(resolve => setTimeout(resolve, 8000))
-      ]);
-    }
-  } catch(e){
-    console.warn("Init cloud warning:", e);
+  if(window.__cloudInitPromise){
+    await window.__cloudInitPromise;
   }
   muatStateDariLocal();
   if(!localStorage.getItem('santri_nurulhikmah')){
     santri = dataAwal;
     localStorage.setItem('santri_nurulhikmah', JSON.stringify(santri));
   }
-  cloudReady = true;
   const btn = document.getElementById('btnLogin');
   const info = document.getElementById('infoLogin');
   if(btn){ btn.disabled = false; btn.innerText = 'MASUK'; }
@@ -1789,15 +1768,15 @@ function pesanMalamByStatus(namaSantri, nis, status){
   const w = cariWaliByNIS(nis);
   const namaWali = (w && w.namaWali) ? esc(w.namaWali) : 'Orang Tuanya';
   if(status==='Hadir'){
-    return n+', pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa '+n+' harus tetap jaga sholat, baca Qur'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah '+n+', diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan '+n+' beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya '+n;
+    return n+', pelajari kembali, hafalkan, pahami dan amalkan yang sudah diajarkan guru tadi. jangan lupa pesan saya, jangan lupa '+n+' harus tetap jaga sholat, baca Qur\'an juga sholawat, dan bersedekah. semoga Allah memperpanjang kontrak hidayah '+n+', diberikan keluasan ilmu yang barokah, yang manfaat, dan yang bisa menjadi alasan '+n+' beristirahat di pangkuan Allah nanti di akhirat kelak. Amiin ... Ngaji lagi ya '+n;
   }
   if(status==='Izin'){
-    return n+', jika urusannya sudah selesai, ngaji lagi ya. jangan lupa sholat, baca qur'an juga sholawat, dan sedekahnya di jaga ya.';
+    return n+', jika urusannya sudah selesai, ngaji lagi ya. jangan lupa sholat, baca qur\'an juga sholawat, dan sedekahnya di jaga ya.';
   }
   if(status==='Sakit'){
-    return n+', cepet sembuh ya. semoga Allah nguatin '+n+' , disabarin dan diobatin sama Allah agar cepet sembuh tapi hikmahnya masih dapat. berdoa bareng yu, <span class="doa-highlight">Nawaitu Li Tholabisy-Syifa Wa Daf'il Bala Li '+n+' bin '+namaWali+' bi barokatil Musthofa AlFatihah ...</span>';
+    return n+', cepet sembuh ya. semoga Allah nguatin '+n+' , disabarin dan diobatin sama Allah agar cepet sembuh tapi hikmahnya masih dapat. berdoa bareng yu, <span class="doa-highlight">Nawaitu Li Tholabisy-Syifa Wa Daf\'il Bala Li '+n+' bin '+namaWali+' bi barokatil Musthofa AlFatihah ...</span>';
   }
-  return n+' jangan jauh dari Allah dan Rosul Nya yaaa. tetep harus jaga sholat, baca qur'an juga sholawat dan sedekahnya. Semoga Allah perpanjang kontrak hidayah '+n+' dan kembali dipilih jadi Pelestari Ilmu Agama Islam yang Allah muliakan.';
+  return n+' jangan jauh dari Allah dan Rosul Nya yaaa. tetep harus jaga sholat, baca qur\'an juga sholawat dan sedekahnya. Semoga Allah perpanjang kontrak hidayah '+n+' dan kembali dipilih jadi Pelestari Ilmu Agama Islam yang Allah muliakan.';
 }
 
 function getKontenKartuInformasi(s){
@@ -2022,9 +2001,7 @@ function hapusSantri(i){
     if(permintaanHapusSantri.some(p=>p.nis===s.nis)){
       return alert('Permintaan hapus untuk "'+s.nama+'" sudah dikirim dan sedang menunggu ACC Admin (Amang Badèn).');
     }
-    if(!confirm('Ajukan penghapusan data santri "'+s.nama+'" (NIS: '+s.nis+') ke Admin (Amang Badèn)?
-
-Data tidak langsung terhapus sebelum Admin menyetujui.')) return;
+    if(!confirm('Ajukan penghapusan data santri "'+s.nama+'" (NIS: '+s.nis+') ke Admin (Amang Badèn)?\n\nData tidak langsung terhapus sebelum Admin menyetujui.')) return;
     permintaanHapusSantri.push({
       nis: s.nis,
       nama: s.nama,
@@ -2171,15 +2148,9 @@ function hapusSatuRiwayat(i){ if(!isAdmin()&&!isPengurus()) return alert('Hanya 
 function hapusSemuaRiwayat(){ if(!isAdmin()&&!isPengurus()) return; if(confirm('Hapus semua riwayat absen?')){ riwayat=[]; simpanRiwayat(); tampilRiwayat(); if(isPengurus()) tampilRiwayatPengurus(); } }
 function shareUlang(){
   if(riwayatTerbuka<0) return; let r = riwayat[riwayatTerbuka];
-  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*
-Dusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.
-${r.hari}, ${r.tanggal}
-
-`;
-  r.data.forEach((s,i)=>{ teks += `${i+1}. ${s.nama} (${s.nis}) = ${s.absen||'Tanpa Keterangan'}
-`; });
-  teks += `
-Total: ${r.total} | Hadir: ${r.hadir} | Sakit: ${r.sakit} | Izin: ${r.izin} | Tanpa Keterangan: ${r.tanpaKet}`;
+  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*\nDusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.\n${r.hari}, ${r.tanggal}\n\n`;
+  r.data.forEach((s,i)=>{ teks += `${i+1}. ${s.nama} (${s.nis}) = ${s.absen||'Tanpa Keterangan'}\n`; });
+  teks += `\nTotal: ${r.total} | Hadir: ${r.hadir} | Sakit: ${r.sakit} | Izin: ${r.izin} | Tanpa Keterangan: ${r.tanpaKet}`;
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
 }
 function updateRekapSantri(tglVal, santriSaatIni){
@@ -2343,16 +2314,10 @@ async function shareWA(){
   let d = tglVal ? new Date(tglVal) : new Date();
   let hari = d.toLocaleDateString('id-ID',{weekday:'long'});
   let tanggal = d.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
-  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*
-Dusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.
-${hari}, ${tanggal}
-
-`;
-  santri.forEach((s,i)=>{ let status = s.absen || 'Tanpa Keterangan'; teks += `${i+1}. ${s.nama} (${s.nis}) = ${status}
-`; });
+  let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*\nDusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.\n${hari}, ${tanggal}\n\n`;
+  santri.forEach((s,i)=>{ let status = s.absen || 'Tanpa Keterangan'; teks += `${i+1}. ${s.nama} (${s.nis}) = ${status}\n`; });
   let h = santri.filter(x=>x.absen==='Hadir').length; let sk = santri.filter(x=>x.absen==='Sakit').length; let iz = santri.filter(x=>x.absen==='Izin').length; let tk = santri.filter(x=>!x.absen||x.absen==='Tanpa Keterangan').length;
-  teks += `
-Total: ${santri.length} | Hadir: ${h} | Sakit: ${sk} | Izin: ${iz} | Tanpa Keterangan: ${tk}`;
+  teks += `\nTotal: ${santri.length} | Hadir: ${h} | Sakit: ${sk} | Izin: ${iz} | Tanpa Keterangan: ${tk}`;
   let jam = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
   let idxSama = riwayat.findIndex(r=>r.tglVal===tglVal);
   let dataBaru = {tglVal, hari, tanggal, jam, total:santri.length, hadir:h, sakit:sk, izin:iz, tanpaKet:tk, data: JSON.parse(JSON.stringify(santri))};
