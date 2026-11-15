@@ -13,7 +13,7 @@ const CLOUD_DATA_KEYS = [
   'santri_nurulhikmah','riwayat_nurulhikmah','rekap_santri_nurulhikmah','wali_nurulhikmah',
   'struktur_nurulhikmah','permintaan_akses_nurulhikmah','disetujui_nurulhikmah',
   'permintaan_hapus_santri_nurulhikmah','pengumuman_nurulhikmah','pengunjung_nurulhikmah',
-  'pesan_khusus_nurulhikmah','revisi_absen_nurulhikmah'
+  'pesan_khusus_nurulhikmah','revisi_absen_nurulhikmah','catatan_khusus_nurulhikmah'
 ];
 const CLOUD_DATA_SET = new Set(CLOUD_DATA_KEYS);
 const _setAsli = localStorage.setItem.bind(localStorage);
@@ -178,6 +178,7 @@ th{background:#f7f7f7;font-size:12px}
 .login-hint{font-size:12px;color:#0b6e4f;background:#f2faf5;border:1px solid #d5ebe0;border-radius:10px;padding:10px;margin-top:8px;line-height:1.5}
 .pesan-aktif-box{background:#fffaf0;border:1.5px solid #d4af37;border-radius:12px;padding:11px;margin-top:10px;font-size:13px;line-height:1.55}
 .revisi-log-card{background:#fbfdfb;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-top:10px}
+.catatan-khusus{background:#f4f8ff;border:1.5px solid #8aaee8;border-left:5px solid #356ac3;border-radius:14px;padding:12px;margin:12px 14px;white-space:pre-wrap;line-height:1.6}.admin-nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -224,6 +225,7 @@ th{background:#f7f7f7;font-size:12px}
 <p class="pengumuman-teks" id="pesanKhususTeks"></p>
 <p class="small" id="pesanKhususInfo"></p>
 </div>
+<div id="catatanKhususBanner" class="catatan-khusus hidden"><b>📝 Catatan Khusus dari Admin</b><div id="catatanKhususTeks"></div><div class="small" id="catatanKhususInfo"></div></div>
 
 <div id="tamuPage" class="hidden">
 <div class="card">
@@ -344,13 +346,7 @@ th{background:#f7f7f7;font-size:12px}
 <div id="previewPesanKhususAdmin" class="pesan-aktif-box">Belum ada pesan khusus aktif.</div>
 </div>
 
-<div class="card hidden" id="cardPermintaanAkses">
-<h3 style="margin:0">🛂 Daftar User Asing - Minta Akses</h3>
-<p class="small">Nama asing yang coba login & kena Akses Ditolak akan muncul di sini. Pilih role (jika Wali, pilih juga anaknya), lalu klik Setujui. Hanya Admin.</p>
-<div id="listPermintaanAkses"></div>
-<p class="small center" id="permintaanKosong">Belum ada permintaan akses.</p>
-<button class="secondary" style="margin-top:12px" onclick="bukaAksesKhususPage()">🔑 Lihat Riwayat Akses Khusus <span id="jmlDisetujuiBtn"></span></button>
-</div>
+<div class="card hidden" id="cardPermintaanAkses"><h3 style="margin:0">🛂 User Asing - Minta Akses</h3><p class="small">Daftar permintaan akses dipindahkan ke halaman khusus.</p><button onclick="bukaPermintaanAksesPage()">🛂 Periksa User Minta Akses <span id="jumlahMintaAkses"></span></button></div>
 
 <div class="card hidden" id="cardPermintaanHapus">
 <h3 style="margin:0">🗑️ ACC Hapus Data Santri <span id="jmlPermintaanHapus"></span></h3>
@@ -359,6 +355,7 @@ th{background:#f7f7f7;font-size:12px}
 <p class="small center" id="permintaanHapusKosong">Belum ada permintaan hapus data santri.</p>
 </div>
 
+<div class="card hidden" id="cardAdminFitur"><h3 style="margin:0">⚙️ Pengelolaan Wali & Catatan</h3><div class="admin-nav-grid"><button onclick="bukaDaftarWaliPage()">👨‍👩‍👧 Daftar Wali Santri</button><button onclick="bukaPermintaanAksesPage()">🛂 Periksa User Minta Akses</button><button onclick="bukaCatatanKhususPage()">📝 Kirim Catatan Khusus</button></div></div>
 <div class="card" id="cardSantri">
 <h3 style="margin:0">Daftar Santri <span id="jmlSantri"></span></h3>
 <div id="adminPanel">
@@ -441,6 +438,10 @@ th{background:#f7f7f7;font-size:12px}
 </div>
 </div>
 
+<div id="daftarWaliPage" class="struktur-page"><header><div class="arab">مجلس تعليم نور الحكمة</div><h1>DAFTAR WALI SANTRI</h1><div class="ornamen">✦ ─── ۞ ─── ✦</div></header><div class="org-wrap"><div class="card"><button class="secondary" onclick="tutupDaftarWaliPage()">← Kembali</button></div><div class="card"><input id="cariDaftarWali" placeholder="Cari wali / santri..." oninput="tampilDaftarWali()"><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button onclick="downloadPDFWali()">⬇ Download PDF</button></div><div id="listDaftarWali"></div></div></div></div>
+<div id="permintaanAksesPage" class="struktur-page"><header><h1>USER MINTA AKSES</h1></header><div class="org-wrap"><div class="card"><button class="secondary" onclick="tutupPermintaanAksesPage()">← Kembali</button></div><div class="card"><div id="listPermintaanAksesPage"></div><p id="permintaanKosongPage" class="small center">Belum ada permintaan akses.</p></div></div></div>
+<div id="catatanKhususPage" class="struktur-page"><header><h1>KIRIM CATATAN KHUSUS</h1></header><div class="org-wrap"><div class="card"><button class="secondary" onclick="tutupCatatanKhususPage()">← Kembali</button></div><div class="card"><textarea id="isiCatatanKhusus" placeholder="Tulis catatan khusus..."></textarea><input id="cariTargetCatatan" placeholder="Cari santri..." oninput="renderTargetCatatan()"><div class="row" style="align-items:center;justify-content:space-between;margin:10px 0"><label class="pilih-anak-item" style="flex:1"><input type="checkbox" id="targetCatatanAll" onchange="toggleSemuaTargetCatatan(this.checked)"> Pilih Semua Santri</label><button type="button" class="secondary" onclick="kosongkanTargetCatatan()">Kosongkan Pilihan</button></div><div id="jumlahTargetCatatan" class="small">0 santri dipilih</div><div id="targetCatatanList" class="pilih-anak-list"></div><h3 style="margin-top:18px">Catatan yang Sedang Tampil pada Akun Santri</h3><div id="daftarCatatanAktif"></div><div class="row"><button onclick="kirimCatatanKhusus()">Kirim Catatan</button><button class="secondary" onclick="hapusCatatanTerpilih()">Hapus Catatan Terpilih</button></div><button class="danger" onclick="hapusSemuaCatatan()">Hapus Catatan Semua Santri</button></div></div></div>
+<div id="riwayatAnakPage" class="struktur-page"><header><div class="arab">مجلس تعليم نور الحكمة</div><h1>RIWAYAT ABSEN ANAK</h1><div class="ornamen">✦ ─── ۞ ─── ✦</div></header><div class="org-wrap"><div class="card"><button class="secondary" onclick="tutupRiwayatAnak()">← Kembali ke Beranda</button></div><div class="card"><h3 id="judulRiwayatAnak">Riwayat Absen</h3><div id="isiRiwayatAnak"></div></div></div></div>
 <!-- HALAMAN BARU: RIWAYAT REVISI ABSEN -->
 <div id="riwayatRevisiPage" class="struktur-page">
 <header>
@@ -576,6 +577,8 @@ th{background:#f7f7f7;font-size:12px}
 </div>
 </div>
 
+<div id="popupEditWali" class="modal"><div class="modal-box"><h3>Edit Data Wali</h3><input id="waliEditNama" placeholder="Nama wali"><textarea id="waliEditAlamat" placeholder="Alamat"></textarea><input id="waliEditNomor" placeholder="Nomor WhatsApp"><p class="small">Pilih santri yang terhubung:</p><input id="waliEditCariSantri" placeholder="Cari santri..." oninput="renderChecklistWaliEdit()"><div id="waliEditChecklist" class="pilih-anak-list"></div><button onclick="simpanEditWali()">Simpan Perubahan</button><button class="secondary" onclick="tutupEditWali()">Batal</button></div></div>
+<div id="popupPilihWali" class="modal"><div class="modal-box"><h3>Pilih Data Wali</h3><p class="small">Nama cocok dengan beberapa data wali. Pilih keluarga yang benar.</p><div id="opsiWaliLogin"></div><button class="secondary" onclick="document.getElementById('popupPilihWali').classList.remove('show')">Batal</button></div></div>
 <div id="popupEditPengunjung" class="modal" onclick="if(event.target===this) tutupEditPengunjung()">
 <div class="modal-box">
 <div style="display:flex;justify-content:space-between;align-items:start"><h3>Ubah Role & Data Anak</h3><button class="del" style="font-size:20px" onclick="tutupEditPengunjung()">✕</button></div>
@@ -695,6 +698,7 @@ function muatStateDariLocal(){
   try{ const v=localStorage.getItem('pengunjung_nurulhikmah'); if(v) pengunjung=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pesan_khusus_nurulhikmah'); if(v) pesanKhusus=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('revisi_absen_nurulhikmah'); if(v) revisiAbsenLog=JSON.parse(v); }catch(e){}
+  try{ const v=localStorage.getItem('catatan_khusus_nurulhikmah'); if(v) catatanKhususSantri=JSON.parse(v)||{}; }catch(e){}
 }
 
 function refreshTampilanSetelahCloud(){
@@ -706,7 +710,7 @@ function refreshTampilanSetelahCloud(){
   else if(isAdmin() || isGuru()){
     tampilSantri(); tampilRiwayat();
     if(isAdmin()){
-      tampilPermintaanAkses(); tampilPermintaanHapus(); tampilPengunjung();
+      tampilPermintaanAkses(); tampilPermintaanHapus(); tampilPengunjung(); if(document.getElementById('permintaanAksesPage').classList.contains('show')) tampilPermintaanAksesPage();
       tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin();
       if(document.getElementById('editDatabasePage').classList.contains('show')) tampilEditDatabase();
       if(document.getElementById('aksesKhususPage').classList.contains('show')) tampilAksesKhususPage();
@@ -757,6 +761,7 @@ let riwayatTerbuka = -1; let editIndex = -1; let waliAnak = []; let santriAktif 
 let rekapSantri = JSON.parse(localStorage.getItem('rekap_santri_nurulhikmah')||'{}');
 function simpanRekapSantri(){ localStorage.setItem('rekap_santri_nurulhikmah', JSON.stringify(rekapSantri)); }
 let waliList = JSON.parse(localStorage.getItem('wali_nurulhikmah')||'[]');
+let catatanKhususSantri = JSON.parse(localStorage.getItem('catatan_khusus_nurulhikmah')||'{}'); let waliEditKey=''; let waliEditSelected=new Set();
 function simpanWali(){ localStorage.setItem('wali_nurulhikmah', JSON.stringify(waliList)); }
 function cariWaliByNIS(nis){ return waliList.find(w=>w.nis===nis); }
 function normalisasiNomor(n){ n=(n||'').trim().replace(/[\s\-]/g,''); if(n.startsWith('0')) n='62'+n.slice(1); if(n.startsWith('+')) n=n.slice(1); return n; }
@@ -1153,7 +1158,7 @@ function setujuiAkses(i){
     });
     simpanWali();
   }
-  simpanDisetujui(); permintaanAkses.splice(i,1); simpanPermintaan(); tampilPermintaanAkses(); tampilSantri(); if(document.getElementById('listEditDatabase')) tampilEditDatabase();
+  simpanDisetujui(); permintaanAkses.splice(i,1); simpanPermintaan(); tampilPermintaanAkses(); if(document.getElementById('permintaanAksesPage').classList.contains('show')) tampilPermintaanAksesPage(); tampilSantri(); if(document.getElementById('listEditDatabase')) tampilEditDatabase();
   let ketAnak = anakNis.length ? ' (Anak: ' + anakNis.map(n=>{ let s=santri.find(x=>x.nis===n); return s?s.nama:n; }).join(', ') + ')' : '';
   alert(p.nama+' disetujui sebagai '+rolePilih+ketAnak+(rolePilih==='WALI'?' Nama wali otomatis masuk ke database anak.':'')+'. Sekarang dia bisa login.');
 }
@@ -1194,6 +1199,7 @@ function hapusPengumuman(){
   pengumuman=null; localStorage.removeItem('pengumuman_nurulhikmah');
   tampilPengumuman(); alert('Pengumuman dihapus.');
 }
+function tampilCatatanKhusus(){const el=document.getElementById('catatanKhususBanner');if(!el)return;const x=catatanKhususSantri[santriAktif?.nis||''];if(isSantri()&&x?.teks){el.classList.remove('hidden');document.getElementById('catatanKhususTeks').innerText=x.teks;document.getElementById('catatanKhususInfo').innerText='Catatan dari Admin • '+(x.waktu||'');}else el.classList.add('hidden');}
 function tampilPesanKhusus(){
   const banner=document.getElementById('pesanKhususBanner');
   if(!banner) return;
@@ -1462,6 +1468,11 @@ function isNamaPengurus(text){
   let kataInput = pecahKata(text);
   return kataInput.some(w=> PENGURUS_NAMES.some(p=> w===p || (p.length>=4 && w.startsWith(p))));
 }
+function namaAdaUnsurPengurus(text){
+ const parts=String(text||'').split('/').map(x=>x.trim());
+ return parts.some(part=>isNamaPengurus(part));
+}
+
 function cekTamuOtomatis(nama){
   let low = nama.toLowerCase().trim();
   if(!low.includes('tamu')) return false;
@@ -1474,19 +1485,32 @@ function cekTamuOtomatis(nama){
 
 function cariAnakWali(namaLogin){
   let acc = cariDisetujui(namaLogin);
-  if(acc && (acc.role==='WALI' || acc.role==='PENGURUS') && Array.isArray(acc.anakNis) && acc.anakNis.length){
+  if(acc && Array.isArray(acc.anakNis) && acc.anakNis.length){
     let nisOverride = new Set(acc.anakNis);
     return santri.filter(s=>nisOverride.has(s.nis));
   }
   const inputPair = pecahPasanganWali(namaLogin);
-  if(!inputPair) return [];
+  const inputSingle = bersihkanNamaWaliTunggal(namaLogin);
   const ketemuWali = waliList.filter(w => {
-    const dbPair = pecahPasanganWali(w.namaWali);
-    return cocokPasanganNama(inputPair, dbPair);
+    const dbRaw=String(w.namaWali||'');
+    if(inputPair){ const dbPair=pecahPasanganWali(dbRaw); return !!dbPair && cocokPasanganNama(inputPair,dbPair); }
+    if(dbRaw.includes('/')) return pecahPasanganWali(dbRaw).some(p=>p===inputSingle);
+    return bersihkanNamaWaliTunggal(dbRaw)===inputSingle;
   });
-  if(!ketemuWali.length) return [];
   const nisSet = new Set(ketemuWali.map(w => w.nis));
   return santri.filter(s => nisSet.has(s.nis));
+}
+
+function kelompokkanKecocokanWali(matches){
+  const groups=new Map();
+  matches.forEach(w=>{
+    const raw=String(w.namaWali||'').trim();
+    const pair=pecahPasanganWali(raw);
+    const key=pair ? 'pair:'+pair.slice().sort().join('/') : 'single:'+bersihkanNamaWaliTunggal(raw);
+    if(!groups.has(key)) groups.set(key,{key,namaWali:raw,records:[],anakNis:[]});
+    const g=groups.get(key);g.records.push(w);if(!g.anakNis.includes(w.nis))g.anakNis.push(w.nis);
+  });
+  return [...groups.values()];
 }
 
 function cariSantriByLogin(namaLogin){
@@ -1502,26 +1526,31 @@ function cariSantriByLogin(namaLogin){
 }
 function isSantri(){ return role==='SANTRI'; }
 function tentukanRole(nama){
-  if(nama==='Hamdan1438') return 'ADMIN';
-  let acc = cariDisetujui(nama);
-  if(acc) return acc.role;
-  if(Object.prototype.hasOwnProperty.call(GURU_CODES, nama)) return 'GURU';
-  if(String(nama||'').includes('/')){
-    let anakWali = cariAnakWali(nama);
-    if(anakWali.length > 0){
-      waliAnak = anakWali;
-      return 'WALI';
-    }
-    return 'TAMU_DITOLAK';
-  }
-  if(isNamaPengurus(nama)) return 'PENGURUS';
-  let s = cariSantriByLogin(nama);
-  if(s){
-    santriAktif = s;
-    return 'SANTRI';
-  }
-  if(cekTamuOtomatis(nama)) return 'TAMU';
-  return 'TAMU_DITOLAK';
+ if(nama==='Hamdan1438')return 'ADMIN';
+ let acc=cariDisetujui(nama);
+ if(Object.prototype.hasOwnProperty.call(GURU_CODES,nama))return 'GURU';
+ const pengurusCocok=namaAdaUnsurPengurus(nama);
+ if(acc){if(pengurusCocok && acc.role!=='ADMIN' && acc.role!=='GURU'){acc.role='PENGURUS';simpanDisetujui();}return acc.role;}
+ const normalized=bersihkanNamaWaliTunggal(nama);
+ let matches=waliList.filter(w=>{let raw=String(w.namaWali||'');return raw.includes('/')?pecahPasanganWali(raw).some(p=>p===normalized):bersihkanNamaWaliTunggal(raw)===normalized;});
+ if(nama.includes('/')){
+  let pair=pecahPasanganWali(nama);
+  matches=pair?waliList.filter(w=>{let p=pecahPasanganWali(w.namaWali);return p&&cocokPasanganNama(pair,p);}):[];
+ }
+ if(matches.length){
+   const groups=kelompokkanKecocokanWali(matches);
+   if(groups.length>1){window.__waliLoginChoices=groups;window.__waliLoginRole=pengurusCocok?'PENGURUS':'WALI';return 'PILIH_WALI';}
+   const nis=[...new Set(matches.map(w=>w.nis))];
+   const existing=cariDisetujui(nama);
+   if(existing){existing.role=pengurusCocok?'PENGURUS':'WALI';existing.anakNis=nis;simpanDisetujui();}
+   else {disetujuiList.push({nama,role:pengurusCocok?'PENGURUS':'WALI',anakNis:nis,viaAcc:true});simpanDisetujui();}
+   waliAnak=santri.filter(x=>nis.includes(x.nis));
+   return pengurusCocok?'PENGURUS':'WALI';
+ }
+ if(pengurusCocok)return 'PENGURUS';
+ let st=cariSantriByLogin(nama);if(st){santriAktif=st;return 'SANTRI';}
+ if(cekTamuOtomatis(nama))return 'TAMU';
+ return 'TAMU_DITOLAK';
 }
 function isAdmin(){ return role==='ADMIN'; }
 function isGuru(){ return role==='GURU'; }
@@ -1535,7 +1564,7 @@ document.getElementById('tglAbsen').valueAsDate = new Date();
 
 function selesaikanLogin(nama,roleFinal){
   user=nama; role=roleFinal;
-  if(role==='WALI') waliAnak=cariAnakWali(nama);
+  if(role==='WALI' || role==='PENGURUS') waliAnak=cariAnakWali(nama);
   if(role==='SANTRI' && !santriAktif) santriAktif=cariSantriByLogin(nama);
   localStorage.setItem('user_nurulhikmah',user);
   localStorage.setItem('role_nurulhikmah',role);
@@ -1550,8 +1579,8 @@ function pulihkanSesiLogin(){
   let roleBaru=tentukanRole(namaTersimpan);
   if(roleBaru==='TAMU_DITOLAK'){
     localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');user='';role='';
-  }else if(roleBaru==='WALI'){
-    role='WALI';
+  }else if(roleBaru==='WALI' || roleBaru==='PENGURUS'){
+    role=roleBaru;
     waliAnak=cariAnakWali(namaTersimpan);
     localStorage.setItem('role_nurulhikmah',role);
     showHome();
@@ -1572,6 +1601,7 @@ async function login(){
   if(!nama){document.getElementById('infoLogin').innerText='Isi nama dulu.';return;}
   user=nama;waliAnak=[];santriAktif=null;
   role=tentukanRole(nama);
+  if(role==='PILIH_WALI'){tampilPilihanWaliLogin(nama);return;}
   if(role==='TAMU_DITOLAK'){
     if(!permintaanAkses.some(p=>p.nama.toLowerCase()===nama.toLowerCase())&&!cariDisetujui(nama)){
       permintaanAkses.push({nama:nama,waktu:new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})});simpanPermintaan();
@@ -1612,6 +1642,7 @@ function showHome(){
   document.getElementById('adminPanel').classList.add('hidden');
   document.getElementById('guruInfo').classList.add('hidden');
   document.getElementById('cardPengunjung').classList.add('hidden');
+  document.getElementById('cardAdminFitur').classList.add('hidden');
   document.getElementById('cardPengumumanAdmin').classList.add('hidden');
   document.getElementById('cardRevisiAbsenAdmin').classList.add('hidden');
   document.getElementById('cardPesanKhususAdmin').classList.add('hidden');
@@ -1658,11 +1689,12 @@ function showHome(){
   if(isAdmin()){
     document.getElementById('adminPanel').classList.remove('hidden');
     document.getElementById('cardPengunjung').classList.remove('hidden');
+    document.getElementById('cardAdminFitur').classList.remove('hidden');
     document.getElementById('cardPengumumanAdmin').classList.remove('hidden');
     document.getElementById('cardRevisiAbsenAdmin').classList.remove('hidden');
     document.getElementById('cardPesanKhususAdmin').classList.remove('hidden');
     tampilLogRevisiAbsen(); tampilInfoPesanKhususAdmin();
-    document.getElementById('cardPermintaanAkses').classList.remove('hidden');
+    document.getElementById('cardPermintaanAkses').classList.add('hidden');
     document.getElementById('cardPermintaanHapus').classList.remove('hidden');
     document.getElementById('btnEditDatabaseWrap').classList.remove('hidden');
     document.getElementById('btnAbsenAdminWrap').classList.remove('hidden');
@@ -1809,7 +1841,7 @@ function kartuAnakWali(s){
   let idx=santri.findIndex(x=>x.nis===s.nis);
   let w=cariWaliByNIS(s.nis);
   let kartu = getKontenKartuInformasi(s);
-  return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${kartu.cls}">${kartu.label}</b><br><span class="small">Tanggal: ${kartu.tanggalTampil}</span></p><div class="wali-pesan">${kartu.pesan}</div><button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button></div>`;
+  return `<div class="wali-card"><b style="font-size:17px">${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${w ? `<span class="small">Wali: ${esc(w.namaWali)} • ${esc(w.alamat||'')}</span><br>` : ''}<p style="margin:8px 0">Absen Hari Ini: <b class="${kartu.cls}">${kartu.label}</b><br><span class="small">Tanggal: ${kartu.tanggalTampil}</span></p><div class="wali-pesan">${kartu.pesan}</div><button onclick="lihatDetailSantri(${idx})" style="margin-top:10px">Lihat Total Absen Anak Saya</button><button class="secondary" onclick="bukaRiwayatAnak('${s.nis}')" style="margin-top:8px">📜 Lihat Riwayat Absen Anak</button></div>`;
 }
 
 function tampilWaliPage(){
@@ -1831,6 +1863,7 @@ function tampilSantriPage(){
   let tanggalStr = d.toLocaleDateString('id-ID',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
   document.getElementById('santriHalo').innerText = "Assalamu'alaikum, "+sNow.nama+"!";
   document.getElementById('santriNamaNIS').innerText = sNow.nama+' • NIS: '+sNow.nis;
+  tampilCatatanKhusus();
   document.getElementById('santriTanggal').innerText = 'Tanggal: '+tanggalStr;
   let elStatus = document.getElementById('santriStatusHariIni');
   elStatus.innerText = kartu.emoji + kartu.label;
@@ -1883,7 +1916,7 @@ function tampilTamuPage(){
   if(wrap.innerHTML==='') wrap.innerHTML='<p class="small center">Tidak ditemukan.</p>';
 }
 function tampilPengurusPage(){
-  let anakPengurus = cariAnakWali(user);
+  let anakPengurus = (Array.isArray(waliAnak) && waliAnak.length) ? waliAnak : cariAnakWali(user);
   let box = document.getElementById('pengurusAnakBox');
   let listAnakP = document.getElementById('listAnakPengurus');
   if(anakPengurus.length>0){
@@ -2326,6 +2359,38 @@ async function shareWA(){
   window.open('https://wa.me/?text='+encodeURIComponent(teks),'_blank');
   await cloudFlush();
 }
+
+function tutupDaftarWaliPage(){document.getElementById('daftarWaliPage').classList.remove('show');}
+function bukaDaftarWaliPage(){if(!isAdmin())return;document.getElementById('daftarWaliPage').classList.add('show');tampilDaftarWali();}
+function daftarWaliAgregat(){const m=new Map();waliList.forEach(w=>{if(!w.namaWali)return;const k=bersihkanNamaWaliTunggal(w.namaWali);if(!m.has(k))m.set(k,{key:k,nama:w.namaWali,alamat:w.alamat||'',nomor:w.nomor||'',records:[]});m.get(k).records.push(w);});return [...m.values()];}
+function tampilDaftarWali(){const el=document.getElementById('listDaftarWali');if(!el)return;const q=(document.getElementById('cariDaftarWali').value||'').toLowerCase();el.innerHTML=daftarWaliAgregat().filter(w=>(w.nama+' '+w.alamat).toLowerCase().includes(q)).map(w=>`<div class="user-aktif"><b>${esc(w.nama)}</b><p class="small">Alamat: ${esc(w.alamat||'-')}<br>WA: ${esc(w.nomor||'-')}<br>Santri: ${w.records.map(r=>esc((santri.find(x=>x.nis===r.nis)||{}).nama||'-')).join(', ')}</p><button onclick="bukaEditWali('${encodeURIComponent(w.key)}')">Edit Wali & Santri</button></div>`).join('')||'<p class="small">Belum ada data wali.</p>';}
+function bukaEditWali(key){waliEditKey=decodeURIComponent(key);waliEditSelected=new Set(waliList.filter(x=>bersihkanNamaWaliTunggal(x.namaWali)===waliEditKey).map(x=>x.nis));const w=waliList.find(x=>bersihkanNamaWaliTunggal(x.namaWali)===waliEditKey)||{};document.getElementById('waliEditNama').value=w.namaWali||'';document.getElementById('waliEditAlamat').value=w.alamat||'';document.getElementById('waliEditNomor').value=w.nomor||'';document.getElementById('popupEditWali').classList.add('show');renderChecklistWaliEdit();}
+function renderChecklistWaliEdit(){const el=document.getElementById('waliEditChecklist');if(!el)return;const q=(document.getElementById('waliEditCariSantri').value||'').toLowerCase();const chosen=waliEditSelected;el.innerHTML=santri.filter(x=>(x.nama+' '+x.nis).toLowerCase().includes(q)).map(x=>`<label class="pilih-anak-item"><input class="wali-edit-check" type="checkbox" value="${x.nis}" ${chosen.has(x.nis)?'checked':''} onchange="toggleWaliEditSantri(this)"> ${esc(x.nama)} (${esc(x.nis)})</label>`).join('');}
+function toggleWaliEditSantri(el){if(el.checked)waliEditSelected.add(el.value);else waliEditSelected.delete(el.value);}
+function tutupEditWali(){document.getElementById('popupEditWali').classList.remove('show');}
+function simpanEditWali(){if(!isAdmin())return;const nama=document.getElementById('waliEditNama').value.trim(),alamat=document.getElementById('waliEditAlamat').value.trim(),nomor=document.getElementById('waliEditNomor').value.trim(),checked=[...waliEditSelected];const old=waliList.filter(w=>bersihkanNamaWaliTunggal(w.namaWali)===waliEditKey);waliList=waliList.filter(w=>bersihkanNamaWaliTunggal(w.namaWali)!==waliEditKey);checked.forEach(nis=>{const st=santri.find(x=>x.nis===nis);waliList.push({nis,namaSantri:st?.nama||'',namaWali:nama,alamat,nomor});});simpanWali();tutupEditWali();tampilDaftarWali();tampilSantri();cloudFlush();alert('Data wali dan relasi santri diperbarui.');}
+function bukaPermintaanAksesPage(){if(!isAdmin())return;document.getElementById('permintaanAksesPage').classList.add('show');tampilPermintaanAksesPage();}
+function tutupPermintaanAksesPage(){document.getElementById('permintaanAksesPage').classList.remove('show');}
+function tampilPermintaanAksesPage(){const src=document.getElementById('listPermintaanAkses');const dest=document.getElementById('listPermintaanAksesPage');if(!src||!dest)return;src.style.display='block';tampilPermintaanAkses();dest.innerHTML=src.innerHTML;src.innerHTML='';const k=document.getElementById('permintaanKosongPage');if(k)k.style.display=permintaanAkses.length?'none':'block';const b=document.getElementById('jumlahMintaAkses');if(b)b.innerText=permintaanAkses.length?'('+permintaanAkses.length+')':'';}
+let catatanTargetTerpilih=new Set();
+function bukaCatatanKhususPage(){if(!isAdmin())return;document.getElementById('catatanKhususPage').classList.add('show');renderTargetCatatan();}
+function tutupCatatanKhususPage(){document.getElementById('catatanKhususPage').classList.remove('show');}
+function toggleTargetCatatan(nis,checked){if(checked)catatanTargetTerpilih.add(nis);else catatanTargetTerpilih.delete(nis);perbaruiStatusTargetCatatan();}
+function toggleSemuaTargetCatatan(checked){catatanTargetTerpilih=checked?new Set(santri.map(x=>x.nis)):new Set();renderTargetCatatan();}
+function kosongkanTargetCatatan(){catatanTargetTerpilih.clear();renderTargetCatatan();}
+function perbaruiStatusTargetCatatan(){const j=document.getElementById('jumlahTargetCatatan');if(j)j.innerText=catatanTargetTerpilih.size+' santri dipilih';const a=document.getElementById('targetCatatanAll');if(a){a.checked=santri.length>0&&santri.every(x=>catatanTargetTerpilih.has(x.nis));a.indeterminate=catatanTargetTerpilih.size>0&&!a.checked;}}
+function renderTargetCatatan(){const el=document.getElementById('targetCatatanList');if(!el)return;const q=(document.getElementById('cariTargetCatatan').value||'').toLowerCase();el.innerHTML=santri.filter(x=>(x.nama+' '+x.nis).toLowerCase().includes(q)).map(x=>`<label class="pilih-anak-item"><input type="checkbox" class="target-catatan-check" value="${x.nis}" ${catatanTargetTerpilih.has(x.nis)?'checked':''} onchange="toggleTargetCatatan(this.value,this.checked)"> ${esc(x.nama)} (${esc(x.nis)}) ${catatanKhususSantri[x.nis]?'• Ada catatan':''}</label>`).join('');perbaruiStatusTargetCatatan();renderDaftarCatatanAktif();}
+function renderDaftarCatatanAktif(){const el=document.getElementById('daftarCatatanAktif');if(!el)return;const rows=Object.entries(catatanKhususSantri||{}).filter(([nis,c])=>c&&c.teks).map(([nis,c])=>{const st=santri.find(x=>x.nis===nis);return `<div class="user-aktif"><b>${esc(st?.nama||'Santri tidak ditemukan')} (${esc(nis)})</b><p class="small">${esc(c.teks)}<br>Dikirim: ${esc(c.waktu||'-')} • Oleh: ${esc(c.pengirim||'-')}</p></div>`;});el.innerHTML=rows.join('')||'<p class="small">Belum ada catatan khusus yang sedang ditampilkan.</p>';}
+
+function simpanCatatanCloud(){localStorage.setItem('catatan_khusus_nurulhikmah',JSON.stringify(catatanKhususSantri));}
+async function kirimCatatanKhusus(){if(!isAdmin())return;const teks=document.getElementById('isiCatatanKhusus').value.trim(),ids=[...catatanTargetTerpilih];if(!teks||!ids.length)return alert('Isi catatan dan pilih minimal satu santri.');const waktu=new Date().toLocaleString('id-ID');ids.forEach(n=>catatanKhususSantri[n]={teks,waktu,pengirim:user});simpanCatatanCloud();await cloudFlush();catatanTargetTerpilih.clear();renderTargetCatatan();alert('Catatan dikirim ke '+ids.length+' santri.');}
+async function hapusCatatanTerpilih(){const ids=[...catatanTargetTerpilih];if(!ids.length)return alert('Pilih santri.');ids.forEach(n=>delete catatanKhususSantri[n]);catatanTargetTerpilih.clear();simpanCatatanCloud();await cloudFlush();renderTargetCatatan();}
+async function hapusSemuaCatatan(){if(!confirm('Hapus catatan semua santri?'))return;catatanKhususSantri={};simpanCatatanCloud();await cloudFlush();renderTargetCatatan();}
+function bukaRiwayatAnak(nis){const s=santri.find(x=>x.nis===nis);if(!s)return; if(isWali()&&!waliAnak.some(x=>x.nis===nis))return alert('Akses riwayat ini tidak diizinkan.');if(isPengurus()&&!isAdmin()&&!waliAnak.some(x=>x.nis===nis))return alert('Akses riwayat ini tidak diizinkan.');document.getElementById('judulRiwayatAnak').innerText='Riwayat Absen: '+s.nama+' ('+s.nis+')';const data=Object.entries((rekapSantri[nis]||{}).perTanggal||{}).sort((a,b)=>b[0].localeCompare(a[0]));document.getElementById('isiRiwayatAnak').innerHTML=data.length?data.map(([tgl,st])=>`<div class="santri-riwayat-item"><span><b>${new Date(tgl+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</b></span><b>${esc(st)}</b></div>`).join(''):'<p class="small">Belum ada riwayat absen.</p>';document.getElementById('riwayatAnakPage').classList.add('show');}
+function tutupRiwayatAnak(){document.getElementById('riwayatAnakPage').classList.remove('show');}
+function downloadPDFWali(){if(!isAdmin())return;const rows=daftarWaliAgregat();const escHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const body=rows.map((w,i)=>`<tr><td>${i+1}</td><td>${escHtml(w.nama)}</td><td>${escHtml(w.alamat||'-')}</td><td>${escHtml(w.nomor||'-')}</td><td>${w.records.map(r=>{const st=santri.find(x=>x.nis===r.nis);return escHtml((st?.nama||r.namaSantri||'-')+' ('+r.nis+')');}).join('<br>')}</td></tr>`).join('');const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Daftar Wali Santri</title><style>@page{size:A4 landscape;margin:18mm 15mm}body{font-family:Arial,sans-serif;color:#18251d}header{text-align:center;border-bottom:3px double #315d43;padding-bottom:12px;margin-bottom:18px}header .arab{font-size:22px;color:#315d43;font-weight:bold}h1{font-size:19px;margin:6px 0;letter-spacing:1px}p{margin:3px;font-size:11px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#e8f0e9;color:#173d27}th,td{border:1px solid #829889;padding:7px;text-align:left;vertical-align:top}footer{margin-top:20px;text-align:right;font-size:10px;color:#53645a}.meta{font-size:10px;text-align:center;margin:8px 0 16px}@media print{button{display:none}}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h1>MAJELIS TA'LIM NURUL HIKMAH</h1><p>GUNUNGKELING • KUNINGAN</p><p>DATA WALI SANTRI DAN INFORMASI KELUARGA</p></header><div class="meta">Dicetak pada ${new Date().toLocaleString('id-ID')} • Total ${rows.length} wali/keluarga</div><table><thead><tr><th>No.</th><th>Nama Wali</th><th>Alamat</th><th>Nomor WhatsApp</th><th>Santri Terkait</th></tr></thead><tbody>${body||'<tr><td colspan="5">Belum ada data wali.</td></tr>'}</tbody></table><footer>Dokumen data internal Majelis Ta'lim Nurul Hikmah</footer><script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`;const win=window.open('','_blank');if(!win)return alert('Izinkan pop-up browser untuk membuat PDF.');win.document.open();win.document.write(html);win.document.close();}
+function tampilPilihanWaliLogin(){const rows=window.__waliLoginChoices||[];document.getElementById('opsiWaliLogin').innerHTML=rows.map((g,i)=>{const anak=g.anakNis.map(n=>{const st=santri.find(x=>x.nis===n);return st?st.nama:n;}).join(', ');return `<button class="secondary" onclick="pilihWaliLogin(${i})">${esc(g.namaWali)} • ${esc(anak||'-')}</button>`;}).join('');document.getElementById('popupPilihWali').classList.add('show');}
+function pilihWaliLogin(i){const g=(window.__waliLoginChoices||[])[i];if(!g)return;document.getElementById('popupPilihWali').classList.remove('show');const nama=document.getElementById('namaLogin').value.trim();const chosenRole=window.__waliLoginRole||'WALI';disetujuiList=disetujuiList.filter(x=>(x.nama||'').toLowerCase()!==nama.toLowerCase());disetujuiList.push({nama,role:chosenRole,anakNis:[...g.anakNis],viaAcc:true});simpanDisetujui();waliAnak=santri.filter(x=>g.anakNis.includes(x.nis));selesaikanLogin(nama,chosenRole);}
 </script>
 <div id="popupRevisiAbsen" class="modal" onclick="if(event.target===this) tutupPopupRevisiAbsen()">
 <div class="modal-box">
