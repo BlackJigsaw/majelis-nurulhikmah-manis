@@ -197,6 +197,8 @@ th{background:#f7f7f7;font-size:12px}
 <input id="namaLogin" placeholder="Masukan Nama Lengkap" onkeydown="if(event.key==='Enter') login()">
 <div class="login-hint">Jika anda wali santri, maka masukan nama dengan format ( nama suami/nama istri ) atau sebaliknya agar tidak terjadi kesalahan informasi santri yang akan di tampilkan di halaman beranda anda</div>
 <button id="btnLogin" onclick="login()" disabled>Memuat Database...</button>
+<button type="button" class="secondary" style="width:100%;margin-top:10px" onclick="masukSebagaiTamu()">MASUK SEBAGAI TAMU</button>
+<p class="small center" style="font-weight:700;color:#9a5b00;line-height:1.5">JIKA ANDA BUKAN TERMASUK PENGURUS/WALI/SANTRI MAKA TEKAN TOMBOL "MASUK SEBAGAI TAMU"</p>
 <p class="small center" id="infoLogin">Menyinkronkan database terbaru dari cloud...</p>
 <p class="small center">Jika terdapat masalah dalam masuk homepage, hubungi <a class="link-amang" onclick="hubungiAmang()">Amang Badèn</a></p>
 </div>
@@ -227,12 +229,14 @@ th{background:#f7f7f7;font-size:12px}
 </div>
 <div id="catatanKhususBanner" class="catatan-khusus hidden"><b>📝 Catatan Khusus dari Admin</b><div id="catatanKhususTeks"></div><div class="small" id="catatanKhususInfo"></div></div>
 
-<div id="tamuPage" class="hidden">
+<div id="guestPage" class="hidden">
 <div class="card">
-<h3 style="margin:0">Daftar Santri & Wali <span id="jmlSantriTamu"></span></h3>
-<p class="small">Mode Tamu: Kamu dapat melihat riwayat absen harian dan bulanan tanpa mengubah atau menghapus data.</p><button class="secondary" onclick="bukaRiwayatPage()">📜 Lihat Riwayat Absen</button>
-<input id="cariTamu" placeholder="Cari santri / wali..." oninput="tampilTamuPage()">
-<div id="listTamuSantri"></div>
+<h3 style="margin:0">Selamat Datang, Pengunjung</h3>
+<p class="small">Mode tamu hanya dapat melihat informasi umum. Data pribadi berupa nomor HP tidak ditampilkan, dan seluruh fitur pengunjung bersifat baca-saja.</p>
+<button onclick="bukaStruktur()">🏛️ Lihat Struktur Organisasi</button>
+<button class="secondary" onclick="bukaDataSantriWali()">👥 Lihat Daftar Santri & Wali</button>
+<button class="secondary" onclick="bukaRiwayatPage()">📜 Lihat Riwayat Absen Harian & Bulanan</button>
+<button class="gold" onclick="bukaPopupAjukanRole()">🛂 AJUKAN ROLE USER</button>
 <button class="secondary" onclick="logout()">Keluar</button>
 </div>
 </div>
@@ -605,11 +609,11 @@ th{background:#f7f7f7;font-size:12px}
 <p class="small" id="editPengunjungNamaInfo"></p>
 <label><b>Role Pengunjung</b></label>
 <select id="editPengunjungRole" onchange="togglePilihAnakEditPengunjung()">
+<option value="" disabled>Pilih role...</option>
 <option value="WALI">Wali Santri (WALI)</option>
 <option value="SANTRI">Santri (SANTRI)</option>
 <option value="PENGURUS">Pengurus (PENGURUS)</option>
 <option value="GURU">Guru (GURU)</option>
-<option value="TAMU">Tamu (TAMU)</option>
 </select>
 <div id="wrapEditPengunjungAnak" class="pilih-anak-box hidden">
 <b class="small" style="color:#0b6e4f;display:block">Pilih Santri (Anak yang ditampilkan di role ini):</b>
@@ -631,18 +635,19 @@ th{background:#f7f7f7;font-size:12px}
 <button class="secondary" onclick="tutupEditStruktur()">Batal</button>
 </div></div>
 
-<div id="popupAccAkses" class="modal" onclick="if(event.target===this)tutupPopupAccAkses()"><div class="modal-box">
-<div style="display:flex;justify-content:space-between;align-items:center"><h3>Setujui Permintaan Akses</h3><button class="del" style="width:auto" onclick="tutupPopupAccAkses()">✕</button></div>
-<p class="small" id="accAksesNama"></p><label><b>Pilih Role User</b></label>
-<select id="accAksesRole" onchange="toggleAnakPopupAcc()"><option value="PENGURUS">Pengurus</option><option value="WALI">Wali</option><option value="SANTRI">Santri</option><option value="TAMU">Tamu</option></select>
-<div id="wrapAnakPopupAcc" class="pilih-anak-box hidden"><b class="small">Pilih santri yang menjadi anak/wali dari user ini:</b><input id="cariAnakPopupAcc" placeholder="Cari nama / NIS santri..." oninput="filterChecklistSantri('listAnakPopupAcc',this.value)"><div id="listAnakPopupAcc" class="pilih-anak-list"></div></div>
-<button onclick="konfirmasiAccAkses()">ACC dan Beri Akses</button><button class="secondary" onclick="tutupPopupAccAkses()">Batal</button>
+<div id="popupAjukanRole" class="modal" onclick="if(event.target===this)tutupPopupAjukanRole()"><div class="modal-box">
+<div style="display:flex;justify-content:space-between;align-items:center"><h3>Ajukan Role User</h3><button class="del" style="width:auto" onclick="tutupPopupAjukanRole()">✕</button></div>
+<p class="small">Masukkan nama lengkap dan role yang ingin diajukan. Pengajuan akan diperiksa oleh Admin.</p>
+<label><b>Nama Lengkap</b></label><input id="namaPengajuanRole" placeholder="Masukkan nama lengkap">
+<label><b>Role yang Diajukan</b></label><select id="rolePengajuan"><option value="PENGURUS">Pengurus</option><option value="GURU">Guru</option><option value="SANTRI">Santri</option></select>
+<button onclick="kirimPengajuanRole()">Kirim Pengajuan</button><button class="secondary" onclick="tutupPopupAjukanRole()">Batal</button>
 </div></div>
+
 <div id="popupAccAkses" class="modal" onclick="if(event.target===this)tutupPopupAccAkses()"><div class="modal-box">
 <div style="display:flex;justify-content:space-between;align-items:center"><h3>Setujui Permintaan Akses</h3><button class="del" style="width:auto" onclick="tutupPopupAccAkses()">✕</button></div>
-<p class="small" id="accAksesNama"></p><label><b>Pilih Role User</b></label>
-<select id="accAksesRole" onchange="toggleAnakPopupAcc()"><option value="PENGURUS">Pengurus</option><option value="WALI">Wali</option><option value="SANTRI">Santri</option><option value="TAMU">Tamu</option></select>
-<div id="wrapAnakPopupAcc" class="pilih-anak-box hidden"><b class="small">Pilih santri yang menjadi anak dari user Wali:</b><input id="cariAnakPopupAcc" placeholder="Cari nama / NIS santri..." oninput="filterChecklistSantri('listAnakPopupAcc',this.value)"><div id="listAnakPopupAcc" class="pilih-anak-list"></div></div>
+<p class="small" id="accAksesNama"></p><p class="small" id="accAksesRoleDiminta"></p><label><b>Role yang akan diberikan (dapat diubah Admin)</b></label>
+<select id="accAksesRole" onchange="toggleAnakPopupAcc()"><option value="PENGURUS">Pengurus</option><option value="GURU">Guru</option><option value="SANTRI">Santri</option></select>
+<div id="wrapAnakPopupAcc" class="pilih-anak-box hidden"><b class="small">Pilih santri yang menjadi anak/wali dari user ini:</b><input id="cariAnakPopupAcc" placeholder="Cari nama / NIS santri..." oninput="filterChecklistSantri('listAnakPopupAcc',this.value)"><div id="listAnakPopupAcc" class="pilih-anak-list"></div></div>
 <button onclick="konfirmasiAccAkses()">ACC dan Beri Akses</button><button class="secondary" onclick="tutupPopupAccAkses()">Batal</button>
 </div></div>
 <div id="popupDitolak" class="modal" onclick="if(event.target===this) tutupPopupDitolak()">
@@ -650,7 +655,7 @@ th{background:#f7f7f7;font-size:12px}
 <div style="font-size:44px">⛔</div>
 <h3 style="margin-top:8px;color:#c0392b">Akses Ditolak!</h3>
 <p style="font-size:15px;line-height:1.5">Nama yang kamu masukan tidak terdaftar.<br><br>Jika anda Pengurus/Wali Santri, Hubungi <a class="link-amang" onclick="hubungiAmang()">Amang Badèn</a></p>
-<p class="small">Permintaan aksesmu sudah dikirim ke Admin. Tunggu Admin menyetujui namamu.</p>
+<p class="small">Jika nama belum terdaftar, hubungi Admin untuk meminta akses.</p>
 <button class="wa" onclick="hubungiAmang()">Hubungi Amang Badèn via WhatsApp</button>
 <button class="secondary" onclick="tutupPopupDitolak()">Tutup</button>
 </div>
@@ -660,7 +665,7 @@ th{background:#f7f7f7;font-size:12px}
 <div class="modal-box">
 <div style="display:flex;justify-content:space-between;align-items:start"><div><h3 id="popupJudul">Riwayat Absen</h3><p class="small" id="popupTanggal" style="margin:4px 0"></p><div id="popupRekap"></div></div><button class="del" style="font-size:20px" onclick="tutupPopup()">✕</button></div>
 <div style="overflow-x:auto;margin-top:10px"><table><thead><tr><th>No</th><th>Nama (NIS)</th><th>Status</th></tr></thead><tbody id="popupIsi"></tbody></table></div>
-<div class="row"><button class="wa" onclick="shareUlang()">Bagikan Lagi ke WhatsApp</button><button class="secondary" onclick="downloadPDFRiwayatHarian(riwayatTerbuka)">⬇ Download PDF</button></div><button class="secondary" onclick="tutupPopup()">Tutup</button>
+<div class="row"><button id="btnShareUlangRiwayat" class="wa" onclick="shareUlang()">Bagikan Lagi ke WhatsApp</button><button class="secondary" onclick="downloadPDFRiwayatHarian(riwayatTerbuka)">⬇ Download PDF</button></div><button class="secondary" onclick="tutupPopup()">Tutup</button>
 </div></div>
 
 <div id="popupSantri" class="modal" onclick="if(event.target===this) tutupPopupSantri()">
@@ -725,15 +730,16 @@ function muatStateDariLocal(){
   try{ const v=localStorage.getItem('rekap_santri_nurulhikmah'); if(v) rekapSantri=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('wali_nurulhikmah'); if(v) waliList=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('struktur_nurulhikmah'); if(v) strukturData=JSON.parse(v); }catch(e){}
-  try{ const v=localStorage.getItem('permintaan_akses_nurulhikmah'); if(v) permintaanAkses=JSON.parse(v); }catch(e){}
-  try{ const v=localStorage.getItem('disetujui_nurulhikmah'); if(v) disetujuiList=JSON.parse(v).map(x=>typeof x==='string'?{nama:x,role:'TAMU',anakNis:[],viaAcc:true}:{nama:x.nama,role:x.role||'TAMU',anakNis:Array.isArray(x.anakNis)?x.anakNis:[],viaAcc:!!x.viaAcc}); }catch(e){}
+  try{ const v=localStorage.getItem('permintaan_akses_nurulhikmah'); if(v) permintaanAkses=JSON.parse(v).map(p=>{if(p&&p.roleDiminta==='TAMU')delete p.roleDiminta;return p;}); }catch(e){}
+  try{ const v=localStorage.getItem('disetujui_nurulhikmah'); if(v) disetujuiList=JSON.parse(v).filter(x=>x && typeof x==='object' && ['WALI','SANTRI','PENGURUS','GURU','ADMIN'].includes(String(x.role||'').toUpperCase())).map(x=>({nama:x.nama,role:String(x.role).toUpperCase(),anakNis:Array.isArray(x.anakNis)?x.anakNis:[],viaAcc:!!x.viaAcc})); }catch(e){}
   try{ const v=localStorage.getItem('permintaan_hapus_santri_nurulhikmah'); if(v) permintaanHapusSantri=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pengumuman_nurulhikmah'); if(v) pengumuman=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pengunjung_nurulhikmah'); if(v) pengunjung=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('pesan_khusus_nurulhikmah'); if(v) pesanKhusus=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('revisi_absen_nurulhikmah'); if(v) revisiAbsenLog=JSON.parse(v); }catch(e){}
   try{ const v=localStorage.getItem('catatan_khusus_nurulhikmah'); if(v) catatanKhususSantri=JSON.parse(v)||{}; }catch(e){}
-  try{ const v=localStorage.getItem('riwayat_permohonan_akses_nurulhikmah'); if(v) riwayatPermintaanAkses=JSON.parse(v)||[]; }catch(e){}
+  try{ const v=localStorage.getItem('riwayat_permohonan_akses_nurulhikmah'); if(v) riwayatPermintaanAkses=(JSON.parse(v)||[]).map(r=>({...r,role:r.role==='TAMU'?'-':r.role})); }catch(e){}
+  simpanDisetujui(); simpanPermintaan(); simpanRiwayatPermintaanAkses();
   try{ const v=localStorage.getItem('akses_dicabut_nurulhikmah'); if(v) aksesDicabut=JSON.parse(v)||[]; }catch(e){}
 }
 
@@ -793,6 +799,7 @@ let riwayat = JSON.parse(localStorage.getItem('riwayat_nurulhikmah')||'[]');
 let user = localStorage.getItem('user_nurulhikmah')||'';
 function namaTampil(n){ return n==='Hamdan1438' ? 'Amang Badèn' : n; }
 let role = localStorage.getItem('role_nurulhikmah')||'';
+let isGuestMode = false;
 let riwayatTerbuka = -1; let editIndex = -1; let waliAnak = []; let santriAktif = null; let editPengunjungNama = '';
 let rekapSantri = JSON.parse(localStorage.getItem('rekap_santri_nurulhikmah')||'{}');
 function simpanRekapSantri(){ localStorage.setItem('rekap_santri_nurulhikmah', JSON.stringify(rekapSantri)); }
@@ -934,7 +941,7 @@ function dataBulananAbsen(bulan){const records=(riwayat||[]).filter(r=>String(r.
 function bukaRiwayatBulananPage(){const el=document.getElementById('riwayatBulananPage');if(!el)return;document.getElementById('pilihBulanRiwayat').value=bulanSekarangISO();renderRiwayatBulanan();el.classList.add('show');el.scrollTop=0;}
 function tutupRiwayatBulananPage(){document.getElementById('riwayatBulananPage').classList.remove('show');}
 function renderRiwayatBulanan(){const bulan=document.getElementById('pilihBulanRiwayat').value||bulanSekarangISO();const {records,dates,perSantri}=dataBulananAbsen(bulan);const el=document.getElementById('isiRiwayatBulanan');const label=t=>{const r=records.find(x=>x.tglVal===t);return r?.tanggal||t.slice(-2);};const head=dates.map(t=>`<th>${esc(label(t))}</th>`).join('');const rows=perSantri.map((x,i)=>`<tr><td>${i+1}</td><td><b>${esc(x.nama)}</b><br><span class="small">${esc(x.nis)}</span></td>${x.statuses.map(st=>`<td>${st==='—'?'—':esc(st==='Tanpa Keterangan'?'TK':st)}</td>`).join('')}<td><b>${x.hadir}</b></td><td>${x.sakit}</td><td>${x.izin}</td><td>${x.tanpa}</td><td>${x.persen}%</td></tr>`).join('');const top=[...perSantri].filter(x=>x.total>0).sort((a,b)=>b.persen-a.persen||b.hadir-a.hadir||a.nama.localeCompare(b.nama)).slice(0,10);const empty=records.length? '': '<p class="small center">Belum ada data absen pada bulan ini. Daftar seluruh santri tetap ditampilkan; kolom tanggal akan terisi otomatis setelah absensi disimpan atau direvisi.</p>';el.innerHTML=`${empty}<p class="small">Bulan ${esc(bulan)} • ${dates.length} hari absensi tersimpan • ${perSantri.length} santri</p><div style="overflow-x:auto"><table><thead><tr><th>No</th><th>Nama / NIS</th>${head}<th>Hadir</th><th>Sakit</th><th>Izin</th><th>TK</th><th>Persentase</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Belum ada data santri.</td></tr>'}</tbody></table></div><h3 style="margin-top:18px">🏆 10 Santri dengan Kehadiran Terbaik</h3>${top.length?top.map((x,i)=>`<div class="santri-riwayat-item"><span><b>${i+1}. ${esc(x.nama)}</b><br><span class="small">${x.hadir} hadir dari ${x.total} hari</span></span><b>${x.persen}%</b></div>`).join(''):'<p class="small center">Belum ada data kehadiran untuk peringkat bulan ini.</p>'}`;}
-function downloadPDFRiwayatBulanan(){const bulan=document.getElementById('pilihBulanRiwayat').value||bulanSekarangISO();const {records,dates,perSantri}=dataBulananAbsen(bulan);const label=t=>records.find(x=>x.tglVal===t)?.tanggal||t;const head=dates.map(t=>`<th>${esc(label(t))}</th>`).join('');const rows=perSantri.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}<br>${esc(x.nis)}</td>${x.statuses.map(st=>`<td>${esc(st==='Tanpa Keterangan'?'TK':st)}</td>`).join('')}<td>${x.hadir}</td><td>${x.sakit}</td><td>${x.izin}</td><td>${x.tanpa}</td><td>${x.persen}%</td></tr>`).join('');const top=[...perSantri].filter(x=>x.total>0).sort((a,b)=>b.persen-a.persen||b.hadir-a.hadir).slice(0,10).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}</td><td>${x.hadir}/${x.total}</td><td>${x.persen}%</td></tr>`).join('');const isi=`<div class="meta">Periode ${esc(bulan)} • ${dates.length} hari absensi tersimpan • ${perSantri.length} santri</div>${records.length?'':'<p>Belum ada data absensi pada bulan ini.</p>'}<table><thead><tr><th>No</th><th>Nama / NIS</th>${head}<th>Hadir</th><th>Sakit</th><th>Izin</th><th>TK</th><th>%</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Belum ada data santri.</td></tr>'}</tbody></table><h3>10 Kehadiran Terbaik</h3><table><thead><tr><th>Rank</th><th>Nama</th><th>Hadir</th><th>Persentase</th></tr></thead><tbody>${top||'<tr><td colspan="4">Belum ada data.</td></tr>'}</tbody></table>`;bukaCetakHTML('RIWAYAT ABSEN BULANAN',isi,true);}
+function downloadPDFRiwayatBulanan(){const bulan=document.getElementById('pilihBulanRiwayat').value||bulanSekarangISO();const {records,dates,perSantri}=dataBulananAbsen(bulan);const label=t=>records.find(x=>x.tglVal===t)?.tanggal||t;const head=dates.map(t=>`<th>${esc(label(t))}</th>`).join('');const rows=perSantri.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}<br>${esc(x.nis)}</td>${x.statuses.map(st=>`<td>${esc(st==='Tanpa Keterangan'?'TK':st)}</td>`).join('')}<td>${x.hadir}</td><td>${x.sakit}</td><td>${x.izin}</td><td>${x.tanpa}</td><td>${x.persen}%</td></tr>`).join('');const top=[...perSantri].filter(x=>x.total>0).sort((a,b)=>b.persen-a.persen||b.hadir-a.hadir).slice(0,10).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}</td><td>${x.hadir}/${x.total}</td><td>${x.persen}%</td></tr>`).join('');const isi=`<div class="meta">Periode ${esc(bulan)} • ${dates.length} hari absensi tersimpan • ${perSantri.length} santri</div>${records.length?'':'<p>Belum ada data absensi pada bulan ini.</p>'}<table><thead><tr><th>No</th><th>Nama / NIS</th>${head}<th>Hadir</th><th>Sakit</th><th>Izin</th><th>TK</th><th>%</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Belum ada data santri.</td></tr>'}</tbody></table><h3>10 Kehadiran Terbaik</h3><table><thead><tr><th>Rank</th><th>Nama</th><th>Hadir</th><th>Persentase</th></tr></thead><tbody>${top||'<tr><td colspan="4">Belum ada data.</td></tr>'}</tbody></table>`;bukaCetakHTML('RIWAYAT ABSEN BULANAN - '+namaBulanUntukFile(bulan),isi,true);}
 
 function bukaRiwayatPage(){
   tampilRiwayat();
@@ -972,16 +979,39 @@ function tutupAksesKhususPage(){
   document.getElementById('aksesKhususPage').classList.remove('show');
 }
 
+// ===== PENGAJUAN ROLE DARI MODE TAMU =====
+function bukaPopupAjukanRole(){
+ if(!isGuest()) return alert('Fitur ini hanya tersedia dalam mode tamu.');
+ const el=document.getElementById('namaPengajuanRole'); if(el) el.value='';
+ document.getElementById('popupAjukanRole').classList.add('show');
+}
+function tutupPopupAjukanRole(){document.getElementById('popupAjukanRole').classList.remove('show');}
+function kirimPengajuanRole(){
+ if(!isGuest()) return alert('Hanya pengunjung yang dapat mengajukan role.');
+ const nama=String(document.getElementById('namaPengajuanRole').value||'').trim().replace(/\s+/g,' ');
+ const roleDiminta=document.getElementById('rolePengajuan').value;
+ if(nama.length<3) return alert('Masukkan nama lengkap dengan benar.');
+ if(!['PENGURUS','GURU','SANTRI'].includes(roleDiminta)) return alert('Role pengajuan tidak valid.');
+ const key=keyNamaAkses(nama);
+ const idx=permintaanAkses.findIndex(x=>keyNamaAkses(x.nama)===key);
+ const waktu=new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ const data={nama,roleDiminta,waktu};
+ if(idx>=0) permintaanAkses[idx]=data; else permintaanAkses.push(data);
+ simpanPermintaan();
+ tutupPopupAjukanRole();
+ alert('Pengajuan role '+roleDiminta+' berhasil dikirim. Silakan menunggu pemeriksaan Admin.');
+}
+
 // ===== PERMINTAAN AKSES & OVERRIDE USER =====
-let permintaanAkses = JSON.parse(localStorage.getItem('permintaan_akses_nurulhikmah')||'[]');
+let permintaanAkses = JSON.parse(localStorage.getItem('permintaan_akses_nurulhikmah')||'[]').map(p=>{if(p&&p.roleDiminta==='TAMU')delete p.roleDiminta;return p;});
 let disetujuiListRaw = JSON.parse(localStorage.getItem('disetujui_nurulhikmah')||'[]');
-let disetujuiList = disetujuiListRaw.map(x=> typeof x==='string' ? {nama:x, role:'TAMU', anakNis:[], viaAcc:true} : {nama:x.nama, role:x.role||'TAMU', anakNis:Array.isArray(x.anakNis)?x.anakNis:[], viaAcc:!!x.viaAcc});
+let disetujuiList = disetujuiListRaw.filter(x=>x && typeof x==='object' && ['WALI','SANTRI','PENGURUS','GURU','ADMIN'].includes(String(x.role||'').toUpperCase())).map(x=>({nama:x.nama,role:String(x.role).toUpperCase(),anakNis:Array.isArray(x.anakNis)?x.anakNis:[],viaAcc:!!x.viaAcc}));
 let riwayatPermintaanAkses=JSON.parse(localStorage.getItem('riwayat_permohonan_akses_nurulhikmah')||'[]');
 let aksesDicabut=JSON.parse(localStorage.getItem('akses_dicabut_nurulhikmah')||'[]');
 let indeksAksesDiproses=null;
 function simpanRiwayatPermintaanAkses(){localStorage.setItem('riwayat_permohonan_akses_nurulhikmah',JSON.stringify(riwayatPermintaanAkses));}
 function simpanAksesDicabut(){localStorage.setItem('akses_dicabut_nurulhikmah',JSON.stringify(aksesDicabut));}
-function keyNamaAkses(n){return String(n||'').trim().toLowerCase().replace(/\\s+/g,' ');}
+function keyNamaAkses(n){return String(n||'').trim().toLowerCase().replace(/\s+/g,' ');}
 function catatRiwayatAkses(p,status,roleBaru,oleh){riwayatPermintaanAkses.unshift({nama:p.nama,waktuMinta:p.waktu||new Date().toLocaleString('id-ID'),waktuProses:new Date().toLocaleString('id-ID'),status,role:roleBaru||'-',oleh:oleh||'Admin'});simpanRiwayatPermintaanAkses();}
 function simpanPermintaan(){ localStorage.setItem('permintaan_akses_nurulhikmah', JSON.stringify(permintaanAkses)); }
 function simpanDisetujui(){ localStorage.setItem('disetujui_nurulhikmah', JSON.stringify(disetujuiList)); }
@@ -1092,10 +1122,10 @@ function tampilPermintaanAkses(){
  if(!wrap)return;wrap.innerHTML='';
  if(kosong)kosong.style.display=permintaanAkses.length?'none':'block';
  const count=document.getElementById('jumlahMintaAkses');if(count)count.innerText=permintaanAkses.length?'('+permintaanAkses.length+')':'';
- permintaanAkses.forEach((p,i)=>{const d=document.createElement('div');d.className='user-aktif';d.innerHTML=`<b>${esc(p.nama)}</b><br><span class="small">Minta akses: ${esc(p.waktu||'-')}</span><div class="row" style="margin-top:8px"><button onclick="bukaPopupAccAkses(${i})">ACC / Pilih Role</button><button class="danger" onclick="tolakAkses(${i})">Tolak</button></div>`;wrap.appendChild(d);});
+ permintaanAkses.forEach((p,i)=>{const d=document.createElement('div');d.className='user-aktif';d.innerHTML=`<button class="secondary" style="text-align:left;margin-top:0" onclick="bukaPopupAccAkses(${i})"><b>${esc(p.nama)}</b></button><br><span class="small">Role diajukan: <b>${esc(p.roleDiminta||'-')}</b><br>Waktu pengajuan: ${esc(p.waktu||'-')}</span><div class="row" style="margin-top:8px"><button onclick="bukaPopupAccAkses(${i})">Periksa / ACC</button><button class="danger" onclick="tolakAkses(${i})">Tolak</button></div>`;wrap.appendChild(d);});
  tampilRiwayatPermintaanAkses();
 }
-function bukaPopupAccAkses(i){if(!isAdmin()||!permintaanAkses[i])return;indeksAksesDiproses=i;const p=permintaanAkses[i];document.getElementById('accAksesNama').innerHTML='Nama user: <b>'+esc(p.nama)+'</b>';document.getElementById('accAksesRole').value='PENGURUS';document.getElementById('cariAnakPopupAcc').value='';renderChecklistSantri('listAnakPopupAcc',[],'anakPopupAcc');toggleAnakPopupAcc();document.getElementById('popupAccAkses').classList.add('show');}
+function bukaPopupAccAkses(i){if(!isAdmin()||!permintaanAkses[i])return;indeksAksesDiproses=i;const p=permintaanAkses[i];document.getElementById('accAksesNama').innerHTML='Nama lengkap: <b>'+esc(p.nama)+'</b>';document.getElementById('accAksesRoleDiminta').innerHTML='Role yang diajukan: <b>'+esc(p.roleDiminta||'-')+'</b>';document.getElementById('accAksesRole').value=['PENGURUS','GURU','SANTRI'].includes(p.roleDiminta)?p.roleDiminta:'PENGURUS';document.getElementById('cariAnakPopupAcc').value='';renderChecklistSantri('listAnakPopupAcc',[],'anakPopupAcc');toggleAnakPopupAcc();document.getElementById('popupAccAkses').classList.add('show');}
 function tutupPopupAccAkses(){document.getElementById('popupAccAkses').classList.remove('show');indeksAksesDiproses=null;}
 function toggleAnakPopupAcc(){document.getElementById('wrapAnakPopupAcc').classList.toggle('hidden',document.getElementById('accAksesRole').value!=='WALI');}
 function konfirmasiAccAkses(){
@@ -1146,8 +1176,8 @@ function bukaEditUserKhusus(namaUser){
   let acc = cariDisetujui(namaUser);
   if(!acc) return;
   editPengunjungNama = acc.nama;
-  let roleSaatIni = acc.role || 'TAMU';
-  if(!['WALI','SANTRI','PENGURUS','GURU','TAMU'].includes(roleSaatIni)) roleSaatIni = 'TAMU';
+  let roleSaatIni = acc.role || '';
+  if(!['WALI','SANTRI','PENGURUS','GURU'].includes(roleSaatIni)) roleSaatIni = '';
   document.getElementById('editPengunjungNamaInfo').innerHTML = `Mengatur akses khusus untuk: <b>${esc(namaTampil(acc.nama))}</b>`;
   document.getElementById('editPengunjungRole').value = roleSaatIni;
   document.getElementById('cariAnakEditPengunjung').value = '';
@@ -1174,7 +1204,7 @@ function hapusAksesKhusus(idx){
 }
 
 function setujuiAkses(i){bukaPopupAccAkses(i);}
-function tolakAkses(i){if(!isAdmin())return;const p=permintaanAkses[i];if(!p)return;if(confirm('Tolak permintaan akses dari '+p.nama+'?')){catatRiwayatAkses(p,'DITOLAK','-',user||'Admin');permintaanAkses.splice(i,1);simpanPermintaan();tampilPermintaanAkses();if(document.getElementById('permintaanAksesPage').classList.contains('show'))tampilPermintaanAksesPage();}}
+function tolakAkses(i){if(!isAdmin())return;const p=permintaanAkses[i];if(!p)return;if(confirm('Tolak permintaan akses dari '+p.nama+'? Nama ini tidak akan diberi role dari pengajuan tersebut.')){catatRiwayatAkses(p,'DITOLAK','-',user||'Admin');permintaanAkses.splice(i,1);disetujuiList=disetujuiList.filter(x=>keyNamaAkses(x.nama)!==keyNamaAkses(p.nama));if(!aksesDicabut.some(x=>keyNamaAkses(x)===keyNamaAkses(p.nama)))aksesDicabut.push(p.nama);simpanAksesDicabut();simpanDisetujui();simpanPermintaan();tampilPermintaanAkses();tampilAksesKhususPage();tampilPengunjung();if(document.getElementById('permintaanAksesPage').classList.contains('show'))tampilPermintaanAksesPage();}}
 function tampilPengumuman(){
   let banner = document.getElementById('pengumumanBanner');
   if(!pengumuman || !pengumuman.teks){ banner.classList.add('hidden'); return; }
@@ -1306,7 +1336,7 @@ function bukaEditPengunjung(idx){
   editPengunjungNama = p.nama;
   let acc = cariDisetujui(p.nama);
   let roleSaatIni = acc ? acc.role : p.role;
-  if(!['WALI','SANTRI','PENGURUS','GURU','TAMU'].includes(roleSaatIni)) roleSaatIni = 'TAMU';
+  if(!['WALI','SANTRI','PENGURUS','GURU'].includes(roleSaatIni)) roleSaatIni = '';
   document.getElementById('editPengunjungNamaInfo').innerHTML = `Mengatur akses untuk: <b>${esc(namaTampil(p.nama))}</b>`;
   document.getElementById('editPengunjungRole').value = roleSaatIni;
   document.getElementById('cariAnakEditPengunjung').value = '';
@@ -1329,6 +1359,7 @@ function tutupEditPengunjung(){
 function simpanEditPengunjung(){
   if(!isAdmin() || !editPengunjungNama) return;
   let roleBaru = document.getElementById('editPengunjungRole').value;
+  if(!['WALI','SANTRI','PENGURUS','GURU'].includes(roleBaru)) return alert('Pilih role yang valid.');
   let anakNis = [];
   if(roleBaru==='WALI' || roleBaru==='PENGURUS'){
     anakNis = getCheckedNis('listAnakEditPengunjung');
@@ -1530,16 +1561,6 @@ function namaAdaUnsurPengurus(text){
  return parts.some(part=>isNamaPengurus(part));
 }
 
-function cekTamuOtomatis(nama){
-  let low = nama.toLowerCase().trim();
-  if(!low.includes('tamu')) return false;
-  let sisa = low.replace(/\btamu\b/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-  if(!sisa) return false;
-  let cocokSantri = santri.some(s=> adaKataSama(sisa, s.nama));
-  let cocokWali = waliList.some(w=> adaKataSama(sisa, w.namaWali||''));
-  return cocokSantri || cocokWali;
-}
-
 function cariAnakWali(namaLogin){
   let acc = cariDisetujui(namaLogin);
   if(acc && Array.isArray(acc.anakNis) && acc.anakNis.length){
@@ -1588,12 +1609,20 @@ function cariKemungkinanSantriMirip(namaLogin){
   if(!input) return [];
   return santri.filter(st=>tokenNamaMirip(input,st.nama));
 }
+function isGuest(){ return isGuestMode===true; }
+function masukSebagaiTamu(){ user='Pengunjung'; role='TAMU'; isGuestMode=true; waliAnak=[]; santriAktif=null; showHome(); }
 function isSantri(){ return role==='SANTRI'; }
 function tentukanRole(nama){
  if(nama==='Hamdan1438')return 'ADMIN';
+ if((aksesDicabut||[]).some(x=>keyNamaAkses(x)===keyNamaAkses(nama))) return 'LOGIN_DITOLAK';
  const acc=cariDisetujui(nama);
+ // Role yang secara eksplisit di-ACC Admin harus mengalahkan pencocokan otomatis nama.
+ if(acc) return acc.role;
  if(Object.prototype.hasOwnProperty.call(GURU_CODES,nama))return 'GURU';
  const pengurusCocok=namaAdaUnsurPengurus(nama);
+ // Nama yang cocok dengan daftar pengurus langsung mendapat role PENGURUS;
+ // selesaikanLogin tetap memanggil cariAnakWali() untuk menampilkan data anak bila cocok sebagai wali.
+ if(pengurusCocok)return 'PENGURUS';
  const normalized=bersihkanNamaWaliTunggal(nama);
  let waliMatches=waliList.filter(w=>{
    const raw=String(w.namaWali||'');
@@ -1632,16 +1661,13 @@ function tentukanRole(nama){
    window.__jenisIdentitasLoginAktif='SANTRI';
    return 'PILIH_IDENTITAS';
  }
- if(acc){if(pengurusCocok&&acc.role!=='ADMIN'&&acc.role!=='GURU'){acc.role='PENGURUS';simpanDisetujui();}return acc.role;}
  if(pengurusCocok)return 'PENGURUS';
- if(cekTamuOtomatis(nama))return 'TAMU';
- return 'TAMU_DITOLAK';
+ return 'LOGIN_DITOLAK';
 }
 function isAdmin(){ return role==='ADMIN'; }
 function isGuru(){ return role==='GURU'; }
 function isPengurus(){ return role==='PENGURUS'; }
 function isWali(){ return role==='WALI'; }
-function isTamu(){ return role==='TAMU'; }
 function bisaEdit(){ return isAdmin()||isPengurus()||isGuru(); }
 function bisaHapus(){ return isAdmin()||isPengurus()||isGuru(); }
 function bisaAbsen(){ return isAdmin()||isGuru(); }
@@ -1678,7 +1704,7 @@ function pulihkanSesiLogin(){
     tampilPilihanSantriLogin();
     return;
   }
-  if(roleBaru==='TAMU_DITOLAK'){
+  if(roleBaru==='LOGIN_DITOLAK'){
     localStorage.removeItem('user_nurulhikmah');localStorage.removeItem('role_nurulhikmah');user='';role='';
   }else if(roleBaru==='WALI' || roleBaru==='PENGURUS'){
     role=roleBaru;
@@ -1705,7 +1731,7 @@ async function login(){
   if(role==='PILIH_IDENTITAS'){tampilPilihanIdentitasLogin();return;}
   if(role==='PILIH_WALI'){tampilPilihanWaliLogin(nama);return;}
   if(role==='PILIH_SANTRI'){tampilPilihanSantriLogin();return;}
-  if(role==='TAMU_DITOLAK'){
+  if(role==='LOGIN_DITOLAK'){
     if(!permintaanAkses.some(p=>p.nama.toLowerCase()===nama.toLowerCase())&&!cariDisetujui(nama)){
       const waktuMinta=new Date().toLocaleString('id-ID',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});permintaanAkses.push({nama:nama,waktu:waktuMinta});riwayatPermintaanAkses.unshift({nama,waktuMinta,waktuProses:'Menunggu keputusan admin',status:'MENUNGGU',role:'-',oleh:'-' });simpanRiwayatPermintaanAkses();simpanPermintaan();
     }
@@ -1737,9 +1763,9 @@ function showHome(){
   document.getElementById('roleBadge').innerText = role;
   document.getElementById('namaBadge').innerText = GURU_CODES[user] ? (GURU_CODES[user]+' ('+namaTampil(user)+')') : namaTampil(user);
   document.getElementById('jmlSantri').innerText = '('+santri.length+' Santri)';
+  document.getElementById('guestPage').classList.add('hidden');
   document.getElementById('waliPage').classList.add('hidden');
   document.getElementById('santriPage').classList.add('hidden');
-  document.getElementById('tamuPage').classList.add('hidden');
   document.getElementById('pengurusPage').classList.add('hidden');
   document.getElementById('mainPage').classList.remove('hidden');
   document.getElementById('adminPanel').classList.add('hidden');
@@ -1768,6 +1794,14 @@ function showHome(){
   document.getElementById('thAksi').style.display='';
   tampilPengumuman();
   tampilPesanKhusus();
+  if(isGuest()){
+    document.getElementById('mainPage').classList.add('hidden');
+    document.getElementById('guestPage').classList.remove('hidden');
+    document.getElementById('cardAbsen').classList.add('hidden');
+    document.getElementById('btnKeluarInline').classList.add('hidden');
+    document.getElementById('thAksi').style.display='none';
+    return;
+  }
   if(isSantri()){
     if(!santriAktif){ santriAktif = cariSantriByLogin(user); }
     document.getElementById('mainPage').classList.add('hidden');
@@ -1779,11 +1813,6 @@ function showHome(){
     document.getElementById('mainPage').classList.add('hidden');
     document.getElementById('waliPage').classList.remove('hidden');
     tampilWaliPage(); return;
-  }
-  if(isTamu()){
-    document.getElementById('mainPage').classList.add('hidden');
-    document.getElementById('tamuPage').classList.remove('hidden');
-    tampilTamuPage(); return;
   }
   if(isPengurus()){
     document.getElementById('mainPage').classList.add('hidden');
@@ -2010,21 +2039,6 @@ function tampilSantriPage(){
   }
 }
 
-function tampilTamuPage(){
-  document.getElementById('jmlSantriTamu').innerText = '('+santri.length+' Santri)';
-  let q = (document.getElementById('cariTamu').value||'').toLowerCase();
-  let wrap = document.getElementById('listTamuSantri'); wrap.innerHTML='';
-  santri.forEach((s,i)=>{
-    let w = cariWaliByNIS(s.nis);
-    if(q && !s.nama.toLowerCase().includes(q) && !s.nis.includes(q) && !(w && ((w.namaWali||'').toLowerCase().includes(q) || (w.alamat||'').toLowerCase().includes(q) || (w.nomor||'').includes(q)))) return;
-    let nomorBersih = w ? normalisasiNomor(w.nomor||'') : '';
-    let htmlWali = w ? `<b>👤 Wali Santri: ${esc(w.namaWali)}</b><br><span class="small">📍 Alamat: ${esc(w.alamat||'-')}</span><br><span class="small">📞 Nomor Wali: ${nomorBersih ? `<a class="link-wa" href="https://wa.me/${nomorBersih}" target="_blank">${esc(w.nomor)} ↗ Kirim WA</a>` : '-'}</span>` : `<span class="small" style="color:#c0392b">Wali: belum diisi</span><br><span class="small">📍 Alamat: -</span><br><span class="small">📞 Nomor Wali: -</span>`;
-    let div = document.createElement('div'); div.className='santri-pengurus';
-    div.innerHTML = `<b style="font-size:16px">${i+1}. ${esc(s.nama)}</b> <span class="small">NIS: ${esc(s.nis)}</span><br>${htmlWali}`;
-    wrap.appendChild(div);
-  });
-  if(wrap.innerHTML==='') wrap.innerHTML='<p class="small center">Tidak ditemukan.</p>';
-}
 function tampilPengurusPage(){
   let anakPengurus = (Array.isArray(waliAnak) && waliAnak.length) ? waliAnak : cariAnakWali(user);
   let box = document.getElementById('pengurusAnakBox');
@@ -2193,7 +2207,7 @@ function backupData(){
   }).join('');
   const w = window.open('','_blank');
   if(!w) return alert('Izinkan pop-up browser untuk membuat PDF.');
-  w.document.write(`<html><head><title>Database Santri & Wali - Majelis Ta'lim Nurul Hikmah</title>
+  w.document.write(`<html><head><title>${namaFileAman('DATABASE SANTRI & WALI - '+tglCetak)}</title>
   <style>
     @page{size:A4 landscape;margin:14mm}body{font-family:'Aptos','Segoe UI',Arial,sans-serif;padding:0;color:#203329;font-size:10pt}
     header{text-align:center;border-bottom:4px double #315d43;padding-bottom:10px;margin-bottom:14px}header .arab{font-size:20pt;color:#315d43}h2,h3,p.sub{text-align:center;margin:3px 0}
@@ -2228,13 +2242,12 @@ function exportPDF(){
  const tgl=document.getElementById('tglAbsen')?document.getElementById('tglAbsen').value:'-';
  const w=window.open('','_blank'); if(!w) return alert('Izinkan pop-up browser untuk membuat PDF.');
  const rows=santri.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}</td><td>${esc(x.nis)}</td><td>${esc(x.absen||'Tanpa Keterangan')}</td></tr>`).join('');
- w.document.open();w.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Absensi PDF</title><style>@page{size:A4 portrait;margin:15mm}body{font-family:Aptos,'Segoe UI',Arial,sans-serif;color:#203329;font-size:10pt}header{text-align:center;border-bottom:4px double #315d43;padding-bottom:10px;margin-bottom:14px}.arab{font-size:20pt;color:#315d43}h2,h3{text-align:center;margin:4px}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #829889;padding:7px}th{background:#e8f0e9;color:#173d27}footer{margin-top:16px;text-align:right;font-size:9pt}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h2>MAJELIS TA'LIM NURUL HIKMAH</h2><p>Dusun Manis • Desa Gunungkeling • Kecamatan Cigugur • Kabupaten Kuningan • Jawa Barat</p><h3>DAFTAR ABSENSI - ${esc(tgl)}</h3></header><table><thead><tr><th>No</th><th>Nama</th><th>NIS</th><th>Kehadiran</th></tr></thead><tbody>${rows||'<tr><td colspan="4">Belum ada data.</td></tr>'}</tbody></table><footer>Total: ${santri.length} Santri • Dicetak ${new Date().toLocaleString('id-ID')}</footer></body></html>`);w.document.close();setTimeout(()=>w.print(),400);
+ w.document.open();w.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${namaFileAman('DAFTAR ABSENSI - '+tanggalUntukNamaFile(tgl))}</title><style>@page{size:A4 portrait;margin:15mm}body{font-family:Aptos,'Segoe UI',Arial,sans-serif;color:#203329;font-size:10pt}header{text-align:center;border-bottom:4px double #315d43;padding-bottom:10px;margin-bottom:14px}.arab{font-size:20pt;color:#315d43}h2,h3{text-align:center;margin:4px}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #829889;padding:7px}th{background:#e8f0e9;color:#173d27}footer{margin-top:16px;text-align:right;font-size:9pt}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h2>MAJELIS TA'LIM NURUL HIKMAH</h2><p>Dusun Manis • Desa Gunungkeling • Kecamatan Cigugur • Kabupaten Kuningan • Jawa Barat</p><h3>DAFTAR ABSENSI - ${esc(tgl)}</h3></header><table><thead><tr><th>No</th><th>Nama</th><th>NIS</th><th>Kehadiran</th></tr></thead><tbody>${rows||'<tr><td colspan="4">Belum ada data.</td></tr>'}</tbody></table><footer>Total: ${santri.length} Santri • Dicetak ${new Date().toLocaleString('id-ID')}</footer></body></html>`);w.document.close();setTimeout(()=>w.print(),400);
 }
 
 function lihatDetailSantri(i){
   if(isWali()){ let s=santri[i]; if(!waliAnak.some(x=>x.nis===s.nis)) return alert('Kamu hanya bisa lihat anakmu sendiri'); }
   if(isSantri()){ let s=santri[i]; if(!santriAktif || s.nis!==santriAktif.nis) return alert('Kamu hanya bisa lihat absen kamu sendiri'); }
-  if(isTamu()){ return alert('Mode Tamu tidak bisa melihat data absen.'); }
   let s = santri[i]; let r = rekapSantri[s.nis] || {hadir:0, sakit:0, izin:0, tanpaKet:0, perTanggal:{}};
   let total = r.hadir + r.sakit + r.izin + r.tanpaKet;
   document.getElementById('popupSantriNama').innerText = s.nama;
@@ -2271,14 +2284,19 @@ function lihatRiwayat(i){
   document.getElementById('popupRekap').innerHTML = `<span class="chip">Hadir: ${r.hadir}</span><span class="chip">Sakit: ${r.sakit}</span><span class="chip">Izin: ${r.izin}</span><span class="chip">Tanpa Ket: ${r.tanpaKet}</span>`;
   let tbody = document.getElementById('popupIsi');
   tbody.innerHTML = r.data.map((s,idx)=>{ let st = s.absen || 'Tanpa Keterangan'; let cls = st==='Hadir'?'st-Hadir':st==='Sakit'?'st-Sakit':st==='Izin'?'st-Izin':'st-Tanpa'; return `<tr><td>${idx+1}</td><td><b>${esc(s.nama)}</b><br><span class="small">NIS: ${esc(s.nis)}</span></td><td class="${cls}">${st}</td></tr>`; }).join('');
+  const shareBtn=document.getElementById('btnShareUlangRiwayat');if(shareBtn)shareBtn.classList.toggle('hidden',isGuest());
   document.getElementById('popupRiwayat').classList.add('show');
 }
-function bukaCetakHTML(judul,isi,landscape=true){const win=window.open('','_blank');if(!win)return alert('Izinkan pop-up browser untuk membuat PDF.');win.document.open();win.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${judul}</title><style>@page{size:A4 ${landscape?'landscape':'portrait'};margin:14mm}body{font-family:'Aptos','Segoe UI',Arial,sans-serif;color:#203329;font-size:10pt}header{text-align:center;border-bottom:4px double #315d43;padding-bottom:10px;margin-bottom:14px}header .arab{font-size:20pt;color:#315d43}header h2{margin:5px;letter-spacing:1px}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:9pt}th,td{border:1px solid #829889;padding:6px;text-align:left;vertical-align:top}th{background:#e8f0e9;color:#173d27}.meta{text-align:center;font-size:9pt;margin:8px}footer{margin-top:18px;text-align:right;font-size:9pt;color:#53645a}@media print{button{display:none}}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h2>MAJELIS TA'LIM NURUL HIKMAH</h2><div>Dusun Manis • Desa Gunungkeling • Kecamatan Cigugur</div><div>Kabupaten Kuningan • Jawa Barat</div><b>${judul}</b></header>${isi}<footer>Dicetak ${new Date().toLocaleString('id-ID')}</footer><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);win.document.close();}
-function downloadPDFRiwayatHarian(i){const r=riwayat[i];if(!r)return;const rows=(r.data||[]).map((x,j)=>`<tr><td>${j+1}</td><td>${esc(x.nama||'-')}</td><td>${esc(x.nis||'-')}</td><td>${esc(x.absen||'Tanpa Keterangan')}</td></tr>`).join('');const isi=`<div class="meta">${esc(r.hari||'')}, ${esc(r.tanggal||r.tglVal||'-')} • Total ${r.total||0} santri<br>Hadir ${r.hadir||0} • Sakit ${r.sakit||0} • Izin ${r.izin||0} • Tanpa Keterangan ${r.tanpaKet||0}</div><table><thead><tr><th>No</th><th>Nama Santri</th><th>NIS</th><th>Keterangan</th></tr></thead><tbody>${rows}</tbody></table>`;bukaCetakHTML('RIWAYAT ABSEN HARIAN',isi,true);}
+function tanggalUntukNamaFile(iso,fallback=''){const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(m){const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12);return d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}return String(fallback||new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));}
+function namaBulanUntukFile(ym){const m=String(ym||'').match(/^(\d{4})-(\d{2})$/);if(!m)return String(ym||'');return new Date(Number(m[1]),Number(m[2])-1,1,12).toLocaleDateString('id-ID',{month:'long',year:'numeric'});}
+function namaFileAman(v){return String(v||'Dokumen').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();}
+function bukaCetakHTML(judul,isi,landscape=true){const win=window.open('','_blank');if(!win)return alert('Izinkan pop-up browser untuk membuat PDF.');win.document.open();win.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${namaFileAman(judul)}</title><style>@page{size:A4 ${landscape?'landscape':'portrait'};margin:14mm}body{font-family:'Aptos','Segoe UI',Arial,sans-serif;color:#203329;font-size:10pt}header{text-align:center;border-bottom:4px double #315d43;padding-bottom:10px;margin-bottom:14px}header .arab{font-size:20pt;color:#315d43}header h2{margin:5px;letter-spacing:1px}table{width:100%;border-collapse:collapse;margin-top:12px;font-size:9pt}th,td{border:1px solid #829889;padding:6px;text-align:left;vertical-align:top}th{background:#e8f0e9;color:#173d27}.meta{text-align:center;font-size:9pt;margin:8px}footer{margin-top:18px;text-align:right;font-size:9pt;color:#53645a}@media print{button{display:none}}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h2>MAJELIS TA'LIM NURUL HIKMAH</h2><div>Dusun Manis • Desa Gunungkeling • Kecamatan Cigugur</div><div>Kabupaten Kuningan • Jawa Barat</div><b>${judul}</b></header>${isi}<footer>Dicetak ${new Date().toLocaleString('id-ID')}</footer><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);win.document.close();}
+function downloadPDFRiwayatHarian(i){const r=riwayat[i];if(!r)return;const rows=(r.data||[]).map((x,j)=>`<tr><td>${j+1}</td><td>${esc(x.nama||'-')}</td><td>${esc(x.nis||'-')}</td><td>${esc(x.absen||'Tanpa Keterangan')}</td></tr>`).join('');const isi=`<div class="meta">${esc(r.hari||'')}, ${esc(r.tanggal||r.tglVal||'-')} • Total ${r.total||0} santri<br>Hadir ${r.hadir||0} • Sakit ${r.sakit||0} • Izin ${r.izin||0} • Tanpa Keterangan ${r.tanpaKet||0}</div><table><thead><tr><th>No</th><th>Nama Santri</th><th>NIS</th><th>Keterangan</th></tr></thead><tbody>${rows}</tbody></table>`;bukaCetakHTML('RIWAYAT ABSEN HARIAN - '+tanggalUntukNamaFile(r.tglVal,r.hari+', '+(r.tanggal||'')),isi,true);}
 function tutupPopup(){ document.getElementById('popupRiwayat').classList.remove('show'); }
 function hapusSatuRiwayat(i){ if(!isAdmin()&&!isGuru()) return alert('Mode lihat saja. Hanya Admin / Guru yang dapat menghapus riwayat.'); if(confirm('Hapus riwayat '+riwayat[i].tanggal+'?')){ riwayat.splice(i,1); simpanRiwayat(); tampilRiwayat(); if(isPengurus()) tampilRiwayatPengurus(); } }
 function hapusSemuaRiwayat(){ if(!isAdmin()&&!isGuru()) return alert('Mode lihat saja. Hanya Admin / Guru yang dapat menghapus riwayat.'); if(confirm('Hapus semua riwayat absen?')){ riwayat=[]; simpanRiwayat(); tampilRiwayat(); if(isPengurus()) tampilRiwayatPengurus(); } }
 function shareUlang(){
+  if(isGuest()) return alert('Mode tamu hanya dapat melihat informasi.');
   if(riwayatTerbuka<0) return; let r = riwayat[riwayatTerbuka];
   let teks = `*ABSENSI SANTRI/SANTRIWATI MAJELIS TA'LIM NURUL HIKMAH*\nDusun Manis Desa Gunung Keling, Kecamatan Cigugur, Kabupaten Kuningan.\n${r.hari}, ${r.tanggal}\n\n`;
   r.data.forEach((s,i)=>{ teks += `${i+1}. ${s.nama} (${s.nis}) = ${s.absen||'Tanpa Keterangan'}\n`; });
@@ -2502,17 +2520,17 @@ function toggleDetailRiwayatSemua(i){const el=document.getElementById('detailRiw
 function tutupRiwayatSemuaRole(){document.getElementById('riwayatSemuaRolePage').classList.remove('show');}
 function renderDataSantriWaliRole(){
   const q=(document.getElementById('cariDataSantriWaliRole').value||'').toLowerCase().trim();
-  const rows=(santri||[]).filter(x=>{const w=cariWaliByNIS(x.nis)||{};return [x.nama,x.nis,w.namaWali,w.alamat,w.nomor].some(v=>String(v||'').toLowerCase().includes(q));});
+  const rows=(santri||[]).filter(x=>{const w=cariWaliByNIS(x.nis)||{};const fields=[x.nama,x.nis,w.namaWali,w.alamat];if(!isGuest())fields.push(w.nomor);return fields.some(v=>String(v||'').toLowerCase().includes(q));});
   const canManage=isAdmin()||isPengurus()||isGuru();
   const actions=document.getElementById('aksiKelolaDataRole');if(actions)actions.classList.toggle('hidden',!canManage);
-  document.getElementById('isiDataSantriWaliRole').innerHTML=rows.length?rows.map((x)=>{const realIndex=santri.findIndex(z=>String(z.nis)===String(x.nis));const w=cariWaliByNIS(x.nis)||{};return `<div class="santri-pengurus"><b>${esc(x.nama||'-')}</b><br><span class="small">NIS: ${esc(x.nis||'-')}</span><br><b>Wali: ${esc(w.namaWali||'-')}</b><br><span class="small">Alamat: ${esc(w.alamat||'-')}<br>Nomor WhatsApp: ${esc(w.nomor||'-')}</span>${canManage?`<div class="row" style="margin-top:10px"><button class="secondary" onclick="editSantri(${realIndex})">✏️ Edit Santri / Wali</button><button class="danger" onclick="hapusSantri(${realIndex})">🗑️ Hapus Santri</button></div>`:''}</div>`;}).join(''):'<p class="small center">Data tidak ditemukan.</p>';
+  document.getElementById('isiDataSantriWaliRole').innerHTML=rows.length?rows.map((x)=>{const realIndex=santri.findIndex(z=>String(z.nis)===String(x.nis));const w=cariWaliByNIS(x.nis)||{};return `<div class="santri-pengurus"><b>${esc(x.nama||'-')}</b><br><span class="small">NIS: ${esc(x.nis||'-')}</span><br><b>Wali: ${esc(w.namaWali||'-')}</b><br><span class="small">Alamat: ${esc(w.alamat||'-')}${isGuest()?'':'<br>Nomor WhatsApp: '+esc(w.nomor||'-')}</span>${canManage?`<div class="row" style="margin-top:10px"><button class="secondary" onclick="editSantri(${realIndex})">✏️ Edit Santri / Wali</button><button class="danger" onclick="hapusSantri(${realIndex})">🗑️ Hapus Santri</button></div>`:''}</div>`;}).join(''):'<p class="small center">Data tidak ditemukan.</p>';
 }
-function bukaDataSantriWali(){if(!(isWali()||isSantri()||isPengurus()||isGuru()||isAdmin()))return alert('Akses tidak tersedia.');document.getElementById('cariDataSantriWaliRole').value='';renderDataSantriWaliRole();document.getElementById('dataSantriWaliPage').classList.add('show');}
+function bukaDataSantriWali(){if(!(isGuest()||isWali()||isSantri()||isPengurus()||isGuru()||isAdmin()))return alert('Akses tidak tersedia.');document.getElementById('cariDataSantriWaliRole').value='';renderDataSantriWaliRole();document.getElementById('dataSantriWaliPage').classList.add('show');}
 function tutupDataSantriWali(){document.getElementById('dataSantriWaliPage').classList.remove('show');}
 
 function bukaRiwayatAnak(nis){const s=santri.find(x=>x.nis===nis);if(!s)return; if(isWali()&&!waliAnak.some(x=>x.nis===nis))return alert('Akses riwayat ini tidak diizinkan.');if(isPengurus()&&!isAdmin()&&!waliAnak.some(x=>x.nis===nis))return alert('Akses riwayat ini tidak diizinkan.');document.getElementById('judulRiwayatAnak').innerText='Riwayat Absen: '+s.nama+' ('+s.nis+')';const data=Object.entries((rekapSantri[nis]||{}).perTanggal||{}).sort((a,b)=>b[0].localeCompare(a[0]));document.getElementById('isiRiwayatAnak').innerHTML=data.length?data.map(([tgl,st])=>`<div class="santri-riwayat-item"><span><b>${new Date(tgl+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</b></span><b>${esc(st)}</b></div>`).join(''):'<p class="small">Belum ada riwayat absen.</p>';document.getElementById('riwayatAnakPage').classList.add('show');}
 function tutupRiwayatAnak(){document.getElementById('riwayatAnakPage').classList.remove('show');}
-function downloadPDFWali(){if(!isAdmin())return;const rows=daftarWaliAgregat();const escHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const body=rows.map((w,i)=>`<tr><td>${i+1}</td><td>${escHtml(w.nama)}</td><td>${escHtml(w.alamat||'-')}</td><td>${escHtml(w.nomor||'-')}</td><td>${w.records.map(r=>{const st=santri.find(x=>x.nis===r.nis);return escHtml((st?.nama||r.namaSantri||'-')+' ('+r.nis+')');}).join('<br>')}</td></tr>`).join('');const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Daftar Wali Santri</title><style>@page{size:A4 landscape;margin:14mm}body{font-family:'Aptos','Segoe UI',Arial,sans-serif;color:#203329;font-size:10pt}header{text-align:center;border-bottom:3px double #315d43;padding-bottom:12px;margin-bottom:18px}header .arab{font-size:22px;color:#315d43;font-weight:bold}h1{font-size:19px;margin:6px 0;letter-spacing:1px}p{margin:3px;font-size:11px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#e8f0e9;color:#173d27}th,td{border:1px solid #829889;padding:7px;text-align:left;vertical-align:top}footer{margin-top:20px;text-align:right;font-size:10px;color:#53645a}.meta{font-size:10px;text-align:center;margin:8px 0 16px}@media print{button{display:none}}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h1>MAJELIS TA'LIM NURUL HIKMAH</h1><p>GUNUNGKELING • KUNINGAN</p><p>DATA WALI SANTRI DAN INFORMASI KELUARGA</p></header><div class="meta">Dicetak pada ${new Date().toLocaleString('id-ID')} • Total ${rows.length} wali/keluarga</div><table><thead><tr><th>No.</th><th>Nama Wali</th><th>Alamat</th><th>Nomor WhatsApp</th><th>Santri Terkait</th></tr></thead><tbody>${body||'<tr><td colspan="5">Belum ada data wali.</td></tr>'}</tbody></table><footer>Dokumen data internal Majelis Ta'lim Nurul Hikmah</footer><script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`;const win=window.open('','_blank');if(!win)return alert('Izinkan pop-up browser untuk membuat PDF.');win.document.open();win.document.write(html);win.document.close();}
+function downloadPDFWali(){if(!isAdmin())return;const rows=daftarWaliAgregat();const escHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const body=rows.map((w,i)=>`<tr><td>${i+1}</td><td>${escHtml(w.nama)}</td><td>${escHtml(w.alamat||'-')}</td><td>${escHtml(w.nomor||'-')}</td><td>${w.records.map(r=>{const st=santri.find(x=>x.nis===r.nis);return escHtml((st?.nama||r.namaSantri||'-')+' ('+r.nis+')');}).join('<br>')}</td></tr>`).join('');const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${namaFileAman('DAFTAR WALI SANTRI - '+tanggalUntukNamaFile())}</title><style>@page{size:A4 landscape;margin:14mm}body{font-family:'Aptos','Segoe UI',Arial,sans-serif;color:#203329;font-size:10pt}header{text-align:center;border-bottom:3px double #315d43;padding-bottom:12px;margin-bottom:18px}header .arab{font-size:22px;color:#315d43;font-weight:bold}h1{font-size:19px;margin:6px 0;letter-spacing:1px}p{margin:3px;font-size:11px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#e8f0e9;color:#173d27}th,td{border:1px solid #829889;padding:7px;text-align:left;vertical-align:top}footer{margin-top:20px;text-align:right;font-size:10px;color:#53645a}.meta{font-size:10px;text-align:center;margin:8px 0 16px}@media print{button{display:none}}</style></head><body><header><div class="arab">مجلس تعليم نور الحكمة</div><h1>MAJELIS TA'LIM NURUL HIKMAH</h1><p>GUNUNGKELING • KUNINGAN</p><p>DATA WALI SANTRI DAN INFORMASI KELUARGA</p></header><div class="meta">Dicetak pada ${new Date().toLocaleString('id-ID')} • Total ${rows.length} wali/keluarga</div><table><thead><tr><th>No.</th><th>Nama Wali</th><th>Alamat</th><th>Nomor WhatsApp</th><th>Santri Terkait</th></tr></thead><tbody>${body||'<tr><td colspan="5">Belum ada data wali.</td></tr>'}</tbody></table><footer>Dokumen data internal Majelis Ta'lim Nurul Hikmah</footer><script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`;const win=window.open('','_blank');if(!win)return alert('Izinkan pop-up browser untuk membuat PDF.');win.document.open();win.document.write(html);win.document.close();}
 function tutupPilihanIdentitasLogin(){document.getElementById('popupPilihIdentitasLogin').classList.remove('show');}
 function pilihJenisIdentitasLogin(jenis){
  const data=window.__identitasLoginChoices||{};
